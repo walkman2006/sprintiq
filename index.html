@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SprintIQ — AI-Powered Agile Project Management</title>
+  <meta name="description" content="SprintIQ is a premium dark-mode agile project management system with predictive AI insights, sprint tracking, and real-time kanban workflow.">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Ambient Blue Highlights (Tasteful, subtle, never everywhere) -->
+  <div class="ambient-glow-top" aria-hidden="true"></div>
+  <div class="ambient-glow-subtle" aria-hidden="true"></div>
+
+  <!-- ========================================================================
+       1. Demo Login View
+       ======================================================================== -->
+  <section id="authView" class="auth-wrapper" style="display: none;">
+    <div class="auth-ambient" aria-hidden="true"></div>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <span class="brand-title">SprintIQ</span>
+        <span class="brand-badge">AI v2.4</span>
+      </div>
+
+      <div class="auth-header">
+        <h1>Sign In to Workspace</h1>
+        <p>Access your agile intelligence dashboard</p>
+      </div>
+
+      <div class="demo-credentials-banner">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <div>
+          <strong>Demo Mode:</strong> Pre-filled with credentials. Click <em>Sign In</em> to proceed instantly.
+        </div>
+      </div>
+
+      <form id="loginForm" onsubmit="event.preventDefault(); AuthController.handleLogin();">
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Work Email</label>
+          <div class="input-container">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <input type="email" id="loginEmail" class="form-input" value="alex.rivera@sprintiq.internal" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">Password</label>
+          <div class="input-container">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <input type="password" id="loginPassword" class="form-input" value="sprintiq-secure-demo" required>
+          </div>
+        </div>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberMe" checked>
+            <span>Remember session</span>
+          </label>
+          <a href="#" class="forgot-link" onclick="Toast.info('Demo password reset link simulated.'); return false;">Forgot?</a>
+        </div>
+
+        <button type="submit" id="btnSignIn" class="btn btn-primary btn-block">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+            <polyline points="10 17 15 12 10 7"></polyline>
+            <line x1="15" y1="12" x2="3" y2="12"></line>
+          </svg>
+          Sign In to Workspace
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       2. App Shell (Sidebar + Topbar + Content)
+       ======================================================================== -->
+  <div id="appShell" class="app-shell">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <div class="brand-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </div>
+          <span class="brand-name">SprintIQ</span>
+          <span class="version-pill">AI</span>
+        </div>
+      </div>
+
+      <!-- Workspace selector -->
+      <div class="workspace-selector">
+        <div class="workspace-badge" title="Active Workspace">
+          <div class="workspace-info">
+            <div class="workspace-avatar">CP</div>
+            <span class="workspace-title">Core Platform Eng</span>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Menu</span>
+
+        <a class="nav-item active" data-view="overview" onclick="Router.navigate('overview')">
+          <div class="nav-item-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span>Overview</span>
+          </div>
+        </a>
+
+        <a class="nav-item" data-view="projects" onclick="Router.navigate('projects')">
+          <div class="nav-item-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            <span>Projects</span>
+          </div>
+          <span class="nav-counter" id="navProjectCount">4</span>
+        </a>
+
+        <a class="nav-item" data-view="sprints" onclick="Router.navigate('sprints')">
+          <div class="nav-item-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Sprints</span>
+          </div>
+          <span class="nav-counter" id="navSprintActiveBadge">Active</span>
+        </a>
+
+        <a class="nav-item" data-view="tasks" onclick="Router.navigate('tasks')">
+          <div class="nav-item-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span>Tasks</span>
+          </div>
+          <span class="nav-counter" id="navTaskCount">12</span>
+        </a>
+
+        <span class="nav-section-label" style="margin-top: 10px;">Intelligence</span>
+
+        <a class="nav-item" data-view="ai-insights" onclick="Router.navigate('ai-insights')">
+          <div class="nav-item-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+            </svg>
+            <span>AI Insights</span>
+          </div>
+          <span class="ai-indicator" title="Active AI Engine"></span>
+        </a>
+
+        <a class="nav-item" data-view="settings" onclick="Router.navigate('settings')">
+          <div class="nav-item-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Settings</span>
+          </div>
+        </a>
+      </nav>
+
+      <!-- Sidebar User Profile Footer -->
+      <div class="sidebar-footer">
+        <div class="user-profile-bar">
+          <div class="user-profile-left">
+            <div class="user-avatar-sm">
+              <span>AR</span>
+              <span class="online-dot" aria-hidden="true"></span>
+            </div>
+            <div class="user-details">
+              <div class="user-name" id="sidebarUserName">Alex Rivera</div>
+              <div class="user-role">Staff Tech Lead</div>
+            </div>
+          </div>
+          <button class="btn-logout" title="Sign Out" onclick="AuthController.handleLogout()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn btn-ghost" id="mobileMenuBtn" aria-label="Toggle menu" onclick="App.toggleMobileSidebar()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="page-breadcrumb">
+          <span class="breadcrumb-root">SprintIQ</span>
+          <span class="breadcrumb-sep">/</span>
+          <span class="page-title-current" id="topbarPageTitle">Overview</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Quick Global Search Input -->
+        <div class="quick-search" onclick="SearchModal.open()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" placeholder="Search tasks, sprints..." readonly>
+          <span class="kbd-shortcut">Ctrl K</span>
+        </div>
+
+        <!-- AI Engine Status Pill -->
+        <div class="system-status-pill" title="AI Predictive Model: Online & Calibrated">
+          <span class="status-dot-pulse" aria-hidden="true"></span>
+          <span>Neural Engine v2.4</span>
+        </div>
+
+        <!-- Notifications Dropdown -->
+        <div class="notification-wrapper">
+          <button class="topbar-icon-btn" id="notifBellBtn" title="Notifications" onclick="Notifications.toggleDropdown()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="unread-badge" id="unreadNotifDot"></span>
+          </button>
+
+          <div class="notifications-dropdown" id="notifDropdown">
+            <div class="notif-header">
+              <h4>System & AI Alerts</h4>
+              <button class="btn btn-ghost btn-sm" onclick="Notifications.markAllRead()">Mark read</button>
+            </div>
+            <div class="notif-list" id="notifListContainer">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Action: New Task -->
+        <button class="btn btn-primary" onclick="TaskModal.openCreate()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New Task</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+      <!-- ====================================================================
+           VIEW 1: OVERVIEW DASHBOARD
+           ==================================================================== -->
+      <section id="view-overview" class="view-container active">
+        <div class="overview-grid">
+
+          <!-- AI Intelligence Highlight Banner -->
+          <div class="ai-summary-banner">
+            <div class="ai-summary-left">
+              <div class="ai-avatar-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+              </div>
+              <div class="ai-summary-text">
+                <h3>
+                  Sprint 42 Health: 94% On Schedule
+                  <span class="badge badge-success">Low Risk</span>
+                </h3>
+                <p>Velocity is trending +6% above 4-week moving average. 1 potential review bottleneck identified in Auth Service.</p>
+              </div>
+            </div>
+            <div class="ai-summary-actions">
+              <button class="btn btn-secondary btn-sm" onclick="Router.navigate('ai-insights')">
+                View Recommendations
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Key Metrics Statistics Grid -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-top">
+                <span class="stat-label">Active Sprints</span>
+                <div class="stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-value-group">
+                <span class="stat-value" id="statActiveSprint">Sprint 42</span>
+              </div>
+              <div class="stat-footer-text">Day 7 of 14 • Ends in 3 days</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-top">
+                <span class="stat-label">Sprint Velocity</span>
+                <div class="stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                    <polyline points="17 6 23 6 23 12"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-value-group">
+                <span class="stat-value" id="statVelocityPts">48 pts</span>
+                <span class="stat-trend positive">↑ 12%</span>
+              </div>
+              <div class="stat-footer-text">Target: 52 pts across 12 tasks</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-top">
+                <span class="stat-label">Total Issues</span>
+                <div class="stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-value-group">
+                <span class="stat-value" id="statTotalIssues">12</span>
+                <span class="badge badge-primary">6 In Prog</span>
+              </div>
+              <div class="stat-footer-text">3 Done • 3 Backlog/Todo</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-top">
+                <span class="stat-label">AI Health Index</span>
+                <div class="stat-icon" style="color: var(--accent-secondary);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="stat-value-group">
+                <span class="stat-value">94 / 100</span>
+                <span class="stat-trend positive">Optimal</span>
+              </div>
+              <div class="stat-footer-text">Zero blocker scope changes</div>
+            </div>
+          </div>
+
+          <!-- Middle Section: Velocity Chart & Sprint Progress -->
+          <div class="dashboard-middle-grid">
+            <!-- Productivity & Velocity Canvas Chart -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="20" x2="18" y2="10"></line>
+                      <line x1="12" y1="20" x2="12" y2="4"></line>
+                      <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    Team Velocity & Burndown
+                  </h3>
+                  <span class="card-subtitle">Burned story points vs ideal trajectory across sprints</span>
+                </div>
+                <div class="chart-header-actions">
+                  <div class="filter-pills">
+                    <span class="filter-pill active" id="chartTabBurndown" onclick="OverviewController.setChartMode('burndown')">Burndown</span>
+                    <span class="filter-pill" id="chartTabVelocity" onclick="OverviewController.setChartMode('velocity')">Velocity</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interactive Canvas Chart -->
+              <div class="chart-canvas-container">
+                <canvas id="productivityCanvas"></canvas>
+              </div>
+
+              <div class="chart-legend">
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: var(--accent-primary);"></span>
+                  <span id="legendLabelPrimary">Actual Completed (pts)</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot" style="background: var(--text-muted); opacity: 0.7;"></span>
+                  <span id="legendLabelSecondary">Ideal Guideline</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Sprint Progress Widget -->
+            <div class="card active-sprint-card">
+              <div>
+                <div class="card-header" style="margin-bottom: 8px;">
+                  <h3 class="card-title">Sprint 42 Status</h3>
+                  <span class="badge badge-success">In Progress</span>
+                </div>
+                <p class="sprint-goal-text">Goal: Ship Kubernetes production rollout and refresh token OAuth2 security layer.</p>
+
+                <div class="sprint-meta-row">
+                  <span>Sprint Completion</span>
+                  <span class="sprint-progress-stat" id="overviewSprintPct">72%</span>
+                </div>
+                <div class="progress-container">
+                  <div class="progress-bar" id="overviewSprintProgressBar" style="width: 72%;"></div>
+                </div>
+
+                <div class="sprint-meta-row" style="margin-top: 14px;">
+                  <span>Points Burned</span>
+                  <strong style="color: var(--text-primary);" id="overviewPointsBurned">38 / 52 pts</strong>
+                </div>
+              </div>
+
+              <div class="sprint-burndown-stats">
+                <div class="burndown-box">
+                  <div class="num" id="overviewCountTodo">3</div>
+                  <div class="lbl">To Do</div>
+                </div>
+                <div class="burndown-box">
+                  <div class="num" id="overviewCountInProgress" style="color: var(--accent-primary);">6</div>
+                  <div class="lbl">In Progress</div>
+                </div>
+                <div class="burndown-box">
+                  <div class="num" id="overviewCountDone" style="color: var(--success);">3</div>
+                  <div class="lbl">Completed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Section: Recent Tasks & Workload -->
+          <div class="dashboard-bottom-grid">
+            <!-- Recent Tasks List -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Recent Sprint Tasks</h3>
+                  <span class="card-subtitle">Active items moving across team board</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="Router.navigate('tasks')">View All Tasks</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="custom-table" id="overviewRecentTasksTable">
+                  <thead>
+                    <tr>
+                      <th>Task</th>
+                      <th>Priority</th>
+                      <th>Assignee</th>
+                      <th>Status</th>
+                      <th>Points</th>
+                    </tr>
+                  </thead>
+                  <tbody id="overviewTasksTbody">
+                    <!-- Injected by OverviewController -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Team Workload Distribution -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3 class="card-title">Team Workload</h3>
+                  <span class="card-subtitle">Story points distribution per engineer</span>
+                </div>
+              </div>
+
+              <div class="workload-list" id="overviewWorkloadList">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 2: PROJECTS PAGE
+           ==================================================================== -->
+      <section id="view-projects" class="view-container">
+        <div class="view-header">
+          <div class="view-header-title">
+            <h2>Workspace Projects</h2>
+            <p>Active repositories, enterprise domains, and sprint initiatives</p>
+          </div>
+          <div class="view-actions-row">
+            <div class="filter-pills">
+              <span class="filter-pill active" onclick="ProjectsController.filter('all', this)">All</span>
+              <span class="filter-pill" onclick="ProjectsController.filter('Active', this)">Active</span>
+              <span class="filter-pill" onclick="ProjectsController.filter('Planning', this)">Planning</span>
+              <span class="filter-pill" onclick="ProjectsController.filter('Completed', this)">Completed</span>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="ProjectModal.open()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              New Project
+            </button>
+          </div>
+        </div>
+
+        <div class="projects-grid" id="projectsGrid">
+          <!-- Rendered by ProjectsController -->
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 3: SPRINTS PAGE
+           ==================================================================== -->
+      <section id="view-sprints" class="view-container">
+        <div class="sprint-summary-hero">
+          <div class="sprint-hero-glow" aria-hidden="true"></div>
+          <div class="sprint-hero-grid">
+            <div class="sprint-hero-info">
+              <h3>
+                Active Sprint 42: Production Resilience & Auth V2
+                <span class="badge badge-success">Running</span>
+              </h3>
+              <div class="sprint-goal-banner">
+                <strong>Sprint Goal:</strong> Finalize migration to zero-trust OAuth2 session revocation, scale Kubernetes ingress, and eliminate payment webhook latency.
+              </div>
+              <div class="sprint-timeline-row">
+                <span>Start: <strong>Oct 02, 2026</strong></span>
+                <span>End: <strong>Oct 16, 2026</strong></span>
+                <span>Days Remaining: <strong style="color: var(--accent-primary);">3 Days</strong></span>
+                <span>Sprint Health: <strong style="color: var(--success);">Optimal (94%)</strong></span>
+              </div>
+            </div>
+
+            <div class="sprint-points-distribution">
+              <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                <span>Total Scope</span>
+                <strong style="color: var(--text-primary);">52 Story Points</strong>
+              </div>
+              <div class="sprint-breakdown-bar">
+                <div class="sprint-seg done" style="width: 45%;" title="Completed: 24 pts"></div>
+                <div class="sprint-seg in-progress" style="width: 35%;" title="In Progress: 18 pts"></div>
+                <div class="sprint-seg review" style="width: 10%;" title="In Review: 5 pts"></div>
+                <div class="sprint-seg todo" style="width: 10%;" title="To Do: 5 pts"></div>
+              </div>
+              <div class="sprint-legend-row">
+                <span style="color: var(--success);">● 24 Done</span>
+                <span style="color: var(--accent-primary);">● 18 In Prog</span>
+                <span style="color: var(--accent-secondary);">● 5 Review</span>
+                <span style="color: var(--text-muted);">● 5 Todo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="view-header">
+          <div class="view-header-title">
+            <h2>Sprint Roadmap & Milestones</h2>
+            <p>Track historical cadence and upcoming release cycles</p>
+          </div>
+          <div class="view-actions-row">
+            <button class="btn btn-primary btn-sm" onclick="SprintModal.open()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Plan Sprint
+            </button>
+          </div>
+        </div>
+
+        <div class="sprints-list" id="sprintsListContainer">
+          <!-- Rendered by SprintsController -->
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 4: TASKS PAGE (KANBAN & LIST)
+           ==================================================================== -->
+      <section id="view-tasks" class="view-container">
+        <div class="view-header">
+          <div class="view-header-title">
+            <h2>Sprint Tasks & Issues</h2>
+            <p>Manage story point backlog, assignees, and issue flow</p>
+          </div>
+          <div class="view-actions-row">
+            <button class="btn btn-primary btn-sm" onclick="TaskModal.openCreate()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Task
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Toolbar -->
+        <div class="tasks-toolbar">
+          <div class="tasks-toolbar-left">
+            <!-- Search field -->
+            <div class="input-container">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="taskSearchInput" class="task-search-input" placeholder="Filter tasks by name..." oninput="TasksController.handleSearch(this.value)">
+            </div>
+
+            <!-- Priority Filter -->
+            <select id="taskPriorityFilter" class="select-filter" onchange="TasksController.handleFilterChange()">
+              <option value="all">All Priorities</option>
+              <option value="Urgent">Urgent</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+
+            <!-- Assignee Filter -->
+            <select id="taskAssigneeFilter" class="select-filter" onchange="TasksController.handleFilterChange()">
+              <option value="all">All Assignees</option>
+              <option value="Alex Rivera">Alex Rivera</option>
+              <option value="Sarah Chen">Sarah Chen</option>
+              <option value="Marcus Vance">Marcus Vance</option>
+              <option value="Elena Rostova">Elena Rostova</option>
+              <option value="David Kim">David Kim</option>
+            </select>
+
+            <!-- Status Filter -->
+            <select id="taskStatusFilter" class="select-filter" onchange="TasksController.handleFilterChange()">
+              <option value="all">All Statuses</option>
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="In Review">In Review</option>
+              <option value="Done">Done</option>
+            </select>
+          </div>
+
+          <div class="view-toggle-btns">
+            <button class="view-toggle-btn active" id="btnToggleKanban" onclick="TasksController.setViewMode('kanban')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="18"></rect>
+                <rect x="14" y="3" width="7" height="18"></rect>
+              </svg>
+              Board
+            </button>
+            <button class="view-toggle-btn" id="btnToggleList" onclick="TasksController.setViewMode('list')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+              List
+            </button>
+          </div>
+        </div>
+
+        <!-- Kanban Board View -->
+        <div class="kanban-board" id="kanbanBoard">
+          <!-- Col 1: To Do -->
+          <div class="kanban-col" data-status="To Do">
+            <div class="kanban-col-header">
+              <span class="kanban-col-title">
+                <span>To Do</span>
+                <span class="nav-counter" id="countColTodo">0</span>
+              </span>
+              <button class="btn btn-ghost btn-sm btn-icon-only" title="Add item" onclick="TaskModal.openCreate('To Do')">+</button>
+            </div>
+            <div class="kanban-cards-list" id="cardsTodo"></div>
+          </div>
+
+          <!-- Col 2: In Progress -->
+          <div class="kanban-col" data-status="In Progress">
+            <div class="kanban-col-header">
+              <span class="kanban-col-title">
+                <span style="color: var(--accent-primary);">In Progress</span>
+                <span class="nav-counter" id="countColInProgress">0</span>
+              </span>
+              <button class="btn btn-ghost btn-sm btn-icon-only" title="Add item" onclick="TaskModal.openCreate('In Progress')">+</button>
+            </div>
+            <div class="kanban-cards-list" id="cardsInProgress"></div>
+          </div>
+
+          <!-- Col 3: In Review -->
+          <div class="kanban-col" data-status="In Review">
+            <div class="kanban-col-header">
+              <span class="kanban-col-title">
+                <span style="color: var(--accent-secondary);">In Review</span>
+                <span class="nav-counter" id="countColInReview">0</span>
+              </span>
+              <button class="btn btn-ghost btn-sm btn-icon-only" title="Add item" onclick="TaskModal.openCreate('In Review')">+</button>
+            </div>
+            <div class="kanban-cards-list" id="cardsInReview"></div>
+          </div>
+
+          <!-- Col 4: Done -->
+          <div class="kanban-col" data-status="Done">
+            <div class="kanban-col-header">
+              <span class="kanban-col-title">
+                <span style="color: var(--success);">Done</span>
+                <span class="nav-counter" id="countColDone">0</span>
+              </span>
+            </div>
+            <div class="kanban-cards-list" id="cardsDone"></div>
+          </div>
+        </div>
+
+        <!-- Alternative List View -->
+        <div class="card" id="tasksListView" style="display: none;">
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Task Key</th>
+                  <th>Title</th>
+                  <th>Priority</th>
+                  <th>Assignee</th>
+                  <th>Status</th>
+                  <th>Points</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tasksListTbody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 5: AI INSIGHTS PAGE
+           ==================================================================== -->
+      <section id="view-ai-insights" class="view-container">
+        <!-- AI Hero Banner -->
+        <div class="ai-view-hero">
+          <div class="ai-hero-inner">
+            <div class="ai-hero-title-group">
+              <h2>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                </svg>
+                SprintIQ Neural Engine
+              </h2>
+              <p>Continuous predictive workload balancing, pull-request bottleneck mitigation, and sprint velocity forecasting using team telemetry.</p>
+            </div>
+            <div class="ai-status-tag">
+              <span class="status-dot-pulse" style="background: var(--accent-secondary);" aria-hidden="true"></span>
+              <span>Model Confidence: 96.2%</span>
+            </div>
+          </div>
+
+          <!-- Interactive AI Prompt Inquiry Box -->
+          <div class="ai-prompt-box">
+            <div class="ai-input-row">
+              <input type="text" id="aiQueryInput" class="ai-input-field" placeholder="Ask SprintIQ AI (e.g. 'Who is at risk of burnout?' or 'Forecast sprint completion')...">
+              <button class="btn btn-primary" onclick="AIInsightsController.askAI()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                Inquire
+              </button>
+            </div>
+            <div class="ai-quick-chips">
+              <span style="font-size: 11px; color: var(--text-muted);">Quick prompts:</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Analyze current sprint risks')">Analyze sprint risks</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Who is overloaded?')">Who is overloaded?</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Recommend optimal task sequencing')">Sequencing recommendations</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Generate retrospective draft')">Draft retrospective</span>
+            </div>
+
+            <!-- Dynamic AI Response Panel -->
+            <div class="ai-response-container" id="aiResponsePanel">
+              <div class="ai-response-header">
+                <span class="badge badge-secondary" id="aiResponseTitle">Analysis Output</span>
+                <button class="btn btn-ghost btn-sm" onclick="AIInsightsController.closeResponse()">Dismiss</button>
+              </div>
+              <div class="ai-response-body" id="aiResponseBody">
+                <!-- Response rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="view-header">
+          <div class="view-header-title">
+            <h2>Active Recommendations</h2>
+            <p>High-confidence actions recommended to protect milestone delivery</p>
+          </div>
+          <span class="badge badge-primary">4 Available Actions</span>
+        </div>
+
+        <!-- 4 Recommended Actions Grid -->
+        <div class="recommendations-grid" id="recommendationsContainer">
+          <!-- Dynamically populated by AIInsightsController -->
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 6: SETTINGS PAGE
+           ==================================================================== -->
+      <section id="view-settings" class="view-container">
+        <div class="view-header">
+          <div class="view-header-title">
+            <h2>System Settings</h2>
+            <p>Manage workspace parameters, ambient preferences, and telemetry</p>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <!-- Settings Navigation -->
+          <div class="settings-nav">
+            <div class="settings-nav-item active" onclick="SettingsController.setTab('general', this)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span>General</span>
+            </div>
+            <div class="settings-nav-item" onclick="SettingsController.setTab('ai', this)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+              <span>AI Engine</span>
+            </div>
+            <div class="settings-nav-item" onclick="SettingsController.setTab('appearance', this)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+              </svg>
+              <span>Appearance</span>
+            </div>
+            <div class="settings-nav-item" onclick="SettingsController.setTab('export', this)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Export & Backup</span>
+            </div>
+          </div>
+
+          <!-- Settings Tab Content -->
+          <div class="settings-content-card">
+            <!-- Tab: General -->
+            <div id="tab-general" class="settings-tab-pane">
+              <div class="settings-section-header">
+                <h3>Workspace Configuration</h3>
+                <p>Organization name and project tracking cadence</p>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>Workspace Name</h4>
+                  <p>Displayed in the sidebar and navigation header</p>
+                </div>
+                <input type="text" class="form-input no-icon" style="width: 220px;" value="Core Platform Engineering">
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>Default Sprint Duration</h4>
+                  <p>Number of weeks for automated sprint cycle planning</p>
+                </div>
+                <select class="select-filter" style="width: 140px;">
+                  <option selected>2 Weeks (14d)</option>
+                  <option>1 Week (7d)</option>
+                  <option>3 Weeks (21d)</option>
+                  <option>1 Month</option>
+                </select>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>Estimation Scale</h4>
+                  <p>Standard unit used for backlog sizing</p>
+                </div>
+                <select class="select-filter" style="width: 140px;">
+                  <option selected>Fibonacci (1,2,3,5,8)</option>
+                  <option>Linear (1-10)</option>
+                  <option>T-Shirt (S,M,L,XL)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Tab: AI -->
+            <div id="tab-ai" class="settings-tab-pane" style="display: none;">
+              <div class="settings-section-header">
+                <h3>Neural Engine Telemetry</h3>
+                <p>Control algorithmic recommendations and bottleneck thresholds</p>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>Predictive Bottleneck Alerts</h4>
+                  <p>Notify team leads when PR reviews exceed 36 hours</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" checked onchange="Toast.info('Updated bottleneck threshold preference')">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>Automatic Workload Rebalancing</h4>
+                  <p>Generate one-click reassignments when an engineer exceeds 130% capacity</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" checked onchange="Toast.info('Updated workload rebalancing preference')">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Tab: Appearance -->
+            <div id="tab-appearance" class="settings-tab-pane" style="display: none;">
+              <div class="settings-section-header">
+                <h3>Interface & Ambience</h3>
+                <p>Fine-tune developer theme contrast and glow gradients</p>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>Ambient Accent Glow</h4>
+                  <p>Subtle radial blue/violet background highlights</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggleAmbientGlow" checked onchange="SettingsController.toggleGlow(this.checked)">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>High Contrast Mode</h4>
+                  <p>Increases secondary text brightness for accessibility</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" onchange="Toast.info('Contrast profile calibrated')">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Tab: Export -->
+            <div id="tab-export" class="settings-tab-pane" style="display: none;">
+              <div class="settings-section-header">
+                <h3>Data Export & Portability</h3>
+                <p>Export state, issues, and sprint histories as JSON</p>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>Export Workspace Backup</h4>
+                  <p>Download complete database JSON containing all tasks, sprints, and projects</p>
+                </div>
+                <button class="btn btn-secondary" onclick="SettingsController.exportData()">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Export JSON
+                </button>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <h4>Reset to Default Demo State</h4>
+                  <p>Restores original seed projects, sprints, and neural recommendations</p>
+                </div>
+                <button class="btn btn-secondary" style="color: var(--error);" onclick="SettingsController.resetData()">
+                  Reset Data
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========================================================================
+       MODALS & DIALOGS
+       ======================================================================== -->
+
+  <!-- Modal: Create / Edit Task -->
+  <div class="modal-overlay" id="taskModalOverlay" onclick="if(event.target === this) TaskModal.close()">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="taskModalHeading">Create New Task</h3>
+        <button class="btn-close-modal" onclick="TaskModal.close()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <form id="taskForm" onsubmit="event.preventDefault(); TaskModal.handleSubmit();">
+        <div class="modal-body">
+          <input type="hidden" id="taskFormId" value="">
+
+          <div class="form-group">
+            <label class="form-label" for="taskFormTitle">Task Title *</label>
+            <input type="text" id="taskFormTitle" class="form-input no-icon" placeholder="e.g. Implement refresh token rotation handler" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="taskFormDesc">Description</label>
+            <textarea id="taskFormDesc" class="form-input no-icon" style="height: 70px; padding-top: 8px; resize: vertical;" placeholder="Add acceptance criteria or technical context..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="taskFormProject">Project</label>
+              <select id="taskFormProject" class="select-filter" style="width: 100%;">
+                <option value="Cloud Infra Migration">Cloud Infra Migration</option>
+                <option value="NextGen Auth V2">NextGen Auth V2</option>
+                <option value="Payment Gateway Webhooks">Payment Gateway Webhooks</option>
+                <option value="AI Predictive Engine">AI Predictive Engine</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="taskFormSprint">Sprint</label>
+              <select id="taskFormSprint" class="select-filter" style="width: 100%;">
+                <option value="Sprint 42">Sprint 42 (Current)</option>
+                <option value="Sprint 43">Sprint 43 (Upcoming)</option>
+                <option value="Backlog">Product Backlog</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="taskFormStatus">Status</label>
+              <select id="taskFormStatus" class="select-filter" style="width: 100%;">
+                <option value="To Do">To Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="In Review">In Review</option>
+                <option value="Done">Done</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="taskFormPriority">Priority</label>
+              <select id="taskFormPriority" class="select-filter" style="width: 100%;">
+                <option value="Urgent">Urgent</option>
+                <option value="High" selected>High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="taskFormAssignee">Assignee</label>
+              <select id="taskFormAssignee" class="select-filter" style="width: 100%;">
+                <option value="Alex Rivera">Alex Rivera</option>
+                <option value="Sarah Chen">Sarah Chen</option>
+                <option value="Marcus Vance">Marcus Vance</option>
+                <option value="Elena Rostova">Elena Rostova</option>
+                <option value="David Kim">David Kim</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="taskFormPoints">Story Points</label>
+              <select id="taskFormPoints" class="select-filter" style="width: 100%;">
+                <option value="1">1 pt (Trivial)</option>
+                <option value="2">2 pts (Small)</option>
+                <option value="3" selected>3 pts (Medium)</option>
+                <option value="5">5 pts (Large)</option>
+                <option value="8">8 pts (Complex)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="TaskModal.close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitTask">Save Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Create New Project -->
+  <div class="modal-overlay" id="projectModalOverlay" onclick="if(event.target === this) ProjectModal.close()">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Create New Project</h3>
+        <button class="btn-close-modal" onclick="ProjectModal.close()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <form id="projectForm" onsubmit="event.preventDefault(); ProjectModal.handleSubmit();">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="projFormTitle">Project Title *</label>
+            <input type="text" id="projFormTitle" class="form-input no-icon" placeholder="e.g. Distributed Caching Layer" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="projFormDesc">Summary</label>
+            <textarea id="projFormDesc" class="form-input no-icon" style="height: 60px; padding-top: 8px;" placeholder="Architecture scope and objectives..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="projFormStatus">Status</label>
+              <select id="projFormStatus" class="select-filter" style="width: 100%;">
+                <option value="Active">Active</option>
+                <option value="Planning">Planning</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="projFormTag">Primary Category</label>
+              <input type="text" id="projFormTag" class="form-input no-icon" placeholder="e.g. Infrastructure, Auth">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="ProjectModal.close()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Plan Sprint -->
+  <div class="modal-overlay" id="sprintModalOverlay" onclick="if(event.target === this) SprintModal.close()">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Plan New Sprint</h3>
+        <button class="btn-close-modal" onclick="SprintModal.close()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <form id="sprintForm" onsubmit="event.preventDefault(); SprintModal.handleSubmit();">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="sprintFormName">Sprint Name *</label>
+            <input type="text" id="sprintFormName" class="form-input no-icon" placeholder="e.g. Sprint 43: API Gateway Hardening" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sprintFormGoal">Sprint Goal</label>
+            <textarea id="sprintFormGoal" class="form-input no-icon" style="height: 60px; padding-top: 8px;" placeholder="Define the primary deliverable for this cycle..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="sprintFormStart">Start Date</label>
+              <input type="date" id="sprintFormStart" class="form-input no-icon" value="2026-10-19">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sprintFormEnd">End Date</label>
+              <input type="date" id="sprintFormEnd" class="form-input no-icon" value="2026-11-02">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="SprintModal.close()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Schedule Sprint</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Quick Global Search (Ctrl + K) -->
+  <div class="modal-overlay" id="searchModalOverlay" onclick="if(event.target === this) SearchModal.close()">
+    <div class="modal-dialog" style="max-width: 560px;">
+      <div style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-primary);">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="globalSearchInput" class="form-input no-icon" style="height: 36px; background: transparent; border: none; font-size: 14px; padding: 0;" placeholder="Search all tasks, sprints, projects, or AI recommendations..." oninput="SearchModal.handleSearch(this.value)">
+        <span class="kbd-shortcut">ESC</span>
+      </div>
+      <div class="modal-body" id="globalSearchResults" style="max-height: 380px; padding: 12px 16px;">
+        <!-- Filter results -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Vanilla JavaScript Application Logic -->
+  <script src="script.js"></script>
+</body>
+</html>
