@@ -786,23 +786,20 @@ const OverviewController = {
     const container = document.getElementById("overviewWorkloadList");
     if (!container) return;
 
-    const team = [
-      { name: "Sarah Chen", max: 15, role: "Backend Architect" },
-      { name: "David Kim", max: 15, role: "Systems Engineer" },
-      { name: "Alex Rivera", max: 15, role: "Lead Engineer" },
-      { name: "Marcus Vance", max: 15, role: "Fullstack / Auth" },
-      { name: "Elena Rostova", max: 15, role: "Security & QA" }
-    ];
+    const teamMembers = ["Kishore", "Mohan", "Anju", "Anika", "Anish"];
 
-    container.innerHTML = team.map(m => {
-      const assignedTasks = AppState.tasks.filter(t => t.assignee === m.name && t.status !== "Done");
-      const currentPts = assignedTasks.reduce((s, t) => s + Number(t.points), 0);
-      const pct = Math.min(100, Math.round((currentPts / m.max) * 100));
-      const initials = m.name.split(" ").map(n => n[0]).join("");
+    container.innerHTML = teamMembers.map(name => {
+      const assignedTasks = AppState.tasks.filter(t => t.assignee === name);
+      const completedTasks = assignedTasks.filter(t => t.status === "Done");
+      const totalPoints = assignedTasks.reduce((sum, task) => sum + Number(task.points || 0), 0);
+      const completedPoints = completedTasks.reduce((sum, task) => sum + Number(task.points || 0), 0);
+      const pct = totalPoints > 0 ? Math.min(100, Math.round((completedPoints / totalPoints) * 100)) : 0;
+      const initials = name.split(" ").map(part => part[0]).join("").slice(0, 2);
 
       let color = "var(--accent-primary)";
-      if (pct > 85) color = "var(--error)";
-      else if (pct > 65) color = "var(--warning)";
+      if (pct >= 100) color = "var(--success)";
+      else if (pct >= 70) color = "var(--warning)";
+      else if (pct <= 0) color = "var(--border)";
 
       return `
         <div class="workload-item">
@@ -810,11 +807,11 @@ const OverviewController = {
             <div class="workload-user">
               <span class="member-avatar">${initials}</span>
               <div>
-                <div>${m.name}</div>
-                <div style="font-size: 10px; color: var(--text-muted);">${m.role}</div>
+                <div>${name}</div>
+                <div style="font-size: 10px; color: var(--text-muted);">${assignedTasks.length} task${assignedTasks.length === 1 ? "" : "s"} assigned</div>
               </div>
             </div>
-            <div class="workload-stat">${currentPts} / ${m.max} pts (${pct}%)</div>
+            <div class="workload-stat">${assignedTasks.length} tasks • ${completedTasks.length} done • ${pct}%</div>
           </div>
           <div class="progress-container">
             <div class="progress-bar" style="width: ${pct}%; background: ${color};"></div>
@@ -1138,6 +1135,10 @@ const TasksController = {
     Toast.info(`Moved ${task.id} to "${nextStatus}"`);
     this.render();
     OverviewController.render();
+    if (typeof AIInsightsController !== "undefined" && typeof AIInsightsController.generateReport === "function") {
+      AIInsightsController.populateSprintSelector();
+      AIInsightsController.generateReport();
+    }
   },
 
   deleteTask(id) {
@@ -1148,6 +1149,10 @@ const TasksController = {
       Toast.warning(`Deleted task ${removed.id}`);
       this.render();
       OverviewController.render();
+      if (typeof AIInsightsController !== "undefined" && typeof AIInsightsController.generateReport === "function") {
+        AIInsightsController.populateSprintSelector();
+        AIInsightsController.generateReport();
+      }
     }
   },
 
@@ -1180,6 +1185,8 @@ const AIInsightsController = {
     const container = document.getElementById("recommendationsContainer");
     if (!container) return;
 
+    this.showPlaceholder();
+
     container.innerHTML = AppState.recommendations.map(rec => {
       const isApplied = rec.applied;
 
@@ -1207,6 +1214,223 @@ const AIInsightsController = {
         </div>
       `;
     }).join("");
+  },
+
+  showPlaceholder() {
+    const panel = document.getElementById("aiResponsePanel");
+    const title = document.getElementById("aiResponseTitle");
+    const body = document.getElementById("aiResponseBody");
+    if (!panel || !title || !body) return;
+
+    panel.classList.add("show");
+    title.textContent = "Data Summary";
+    body.innerHTML = `
+      <p style="margin: 0; color: var(--text-secondary);">
+        Ask a question about your sprint, tasks, team workload, or project progress.
+      </p>
+    `;
+  },
+
+  findMemberByQuery(query) {
+    const normalized = query.toLowerCase();
+    const members = ["Kishore", "Mohan", "Anju", "Anika", "Anish"];
+    return members.find(member => normalized.includes(member.toLowerCase()));
+  },
+
+  findSprintByQuery(query) {
+    if (!Array.isArray(AppState.sprints) || AppState.sprints.length === 0) return null;
+    const normalized = query.toLowerCase();
+    return AppState.sprints.find(sprint => {
+      const sprintName = (sprint.name || "").toLowerCase();
+      const sprintId = (sprint.id || "").toLowerCase();
+      return normalized.includes(sprintName) || normalized.includes(sprintId) || (normalized.includes("sprint") && sprintName.includes(normalized.replace(/[^0-9]/g, "")));
+    }) || AppState.sprints[0];
+  },
+
+  buildSprintReportMarkup(sprint) {
+    if (!sprint) {
+      return `
+        <p><strong>No sprint data available.</strong></p>
+        <p style="color: var(--text-secondary); margin-top: 8px;">There is no sprint information in the current workspace state.</p>
+      `;
+    }
+
+    const sprintTasks = AppState.tasks.filter(task => {
+      const taskSprint = (task.sprint || "").trim();
+      if (!taskSprint) return false;
+      return taskSprint === sprint.name || taskSprint === sprint.id;
+    });
+
+    const totalTasks = sprintTasks.length;
+    const completedTasks = sprintTasks.filter(task => task.status === "Done");
+    const inProgressTasks = sprintTasks.filter(task => task.status === "In Progress");
+    const reviewTasks = sprintTasks.filter(task => task.status === "In Review");
+    const pendingTasks = sprintTasks.filter(task => task.status !== "Done");
+    const completionPct = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+    const storyPointsBurned = completedTasks.reduce((sum, task) => sum + Number(task.points || 0), 0);
+    const teamMembers = ["Kishore", "Mohan", "Anju", "Anika", "Anish"];
+
+    const completedList = completedTasks.length
+      ? completedTasks.map(task => `- ${task.title || "Untitled task"} (${task.assignee || "Unassigned"})`).join("<br>")
+      : "- No completed tasks";
+
+    const pendingList = pendingTasks.length
+      ? pendingTasks.map(task => `- ${task.title || "Untitled task"} (${task.assignee || "Unassigned"}) [${task.status || "Unknown"}]`).join("<br>")
+      : "- No pending tasks";
+
+    const teamSummary = teamMembers.map(member => {
+      const memberTasks = sprintTasks.filter(task => (task.assignee || "").trim() === member);
+      const memberDone = memberTasks.filter(task => task.status === "Done").length;
+      const memberPct = memberTasks.length > 0 ? Math.round((memberDone / memberTasks.length) * 100) : 0;
+      return `- ${member}: ${memberTasks.length} task(s), ${memberDone} completed, ${memberPct}% completion`;
+    }).join("<br>");
+
+    const riskItems = sprintTasks
+      .filter(task => task.status !== "Done")
+      .filter(task => task.priority === "Urgent" || task.priority === "High")
+      .slice(0, 5)
+      .map(task => `- ${task.title || "Untitled task"} (${task.assignee || "Unassigned"}) — ${task.status || "Unknown"}`);
+
+    const riskSummary = riskItems.length ? riskItems.join("<br>") : "- No high-priority unfinished tasks detected.";
+
+    return `
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <p style="margin:0 0 4px; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">Data-driven sprint report</p>
+          <h3 style="margin:0; font-size: 18px; color: var(--text-primary);">${sprint.name || "Unnamed Sprint"}</h3>
+          <p style="margin: 6px 0 0; color: var(--text-secondary);">${sprint.goal || "No goal provided."}</p>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px;">
+          <div class="rec-metric-pill"><span>Total tasks:</span><strong>${totalTasks}</strong></div>
+          <div class="rec-metric-pill"><span>Completed:</span><strong>${completedTasks.length}</strong></div>
+          <div class="rec-metric-pill"><span>In progress:</span><strong>${inProgressTasks.length}</strong></div>
+          <div class="rec-metric-pill"><span>In review:</span><strong>${reviewTasks.length}</strong></div>
+          <div class="rec-metric-pill"><span>Pending:</span><strong>${pendingTasks.length}</strong></div>
+          <div class="rec-metric-pill"><span>Completion:</span><strong>${completionPct}%</strong></div>
+          <div class="rec-metric-pill"><span>Points burned:</span><strong>${storyPointsBurned}</strong></div>
+        </div>
+
+        <div>
+          <p style="margin: 0 0 6px; font-weight: 600; color: var(--text-primary);">Completed tasks</p>
+          <div style="color: var(--text-secondary); line-height: 1.7;">${completedList}</div>
+        </div>
+
+        <div>
+          <p style="margin: 0 0 6px; font-weight: 600; color: var(--text-primary);">Pending tasks</p>
+          <div style="color: var(--text-secondary); line-height: 1.7;">${pendingList}</div>
+        </div>
+
+        <div>
+          <p style="margin: 0 0 6px; font-weight: 600; color: var(--text-primary);">Team contribution</p>
+          <div style="color: var(--text-secondary); line-height: 1.7;">${teamSummary}</div>
+        </div>
+
+        <div>
+          <p style="margin: 0 0 6px; font-weight: 600; color: var(--text-primary);">Attention items</p>
+          <div style="color: var(--text-secondary); line-height: 1.7;">${riskSummary}</div>
+        </div>
+      </div>
+    `;
+  },
+
+  buildMemberTasksMarkup(member) {
+    const tasks = AppState.tasks.filter(task => (task.assignee || "").trim() === member);
+    if (!tasks.length) {
+      return `
+        <p><strong>${member}</strong> has no assigned tasks.</p>
+        <p style="color: var(--text-secondary); margin-top: 8px;">Current workload: 0 tasks, 0% completion.</p>
+      `;
+    }
+
+    const completed = tasks.filter(task => task.status === "Done").length;
+    const total = tasks.length;
+    const completion = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return `
+      <p><strong>${member}</strong> workload summary</p>
+      <ul style="margin: 8px 0 0 18px; line-height: 1.8; color: var(--text-secondary);">
+        ${tasks.map(task => `<li><strong>${task.title || "Untitled task"}</strong> — ${task.status || "Unknown status"} (${task.priority || "Unspecified priority"})</li>`).join("")}
+      </ul>
+      <p style="margin-top: 10px; color: var(--text-secondary);">Total assigned: ${total} • Completed: ${completed} • Completion: ${completion}%</p>
+    `;
+  },
+
+  buildPendingTasksMarkup() {
+    const pending = AppState.tasks.filter(task => task.status !== "Done");
+    if (!pending.length) {
+      return "<p>There are no pending tasks in the current workspace.</p>";
+    }
+
+    return `
+      <p><strong>Pending tasks</strong></p>
+      <ul style="margin: 8px 0 0 18px; line-height: 1.8; color: var(--text-secondary);">
+        ${pending.map(task => `<li><strong>${task.title || "Untitled task"}</strong> — ${task.assignee || "Unassigned"} (${task.status || "Unknown status"})</li>`).join("")}
+      </ul>
+    `;
+  },
+
+  buildWorkloadMarkup() {
+    const teamMembers = ["Kishore", "Mohan", "Anju", "Anika", "Anish"];
+    const rows = teamMembers.map(member => {
+      const tasks = AppState.tasks.filter(task => (task.assignee || "").trim() === member);
+      const completed = tasks.filter(task => task.status === "Done").length;
+      const total = tasks.length;
+      const completion = total > 0 ? Math.round((completed / total) * 100) : 0;
+      const overloaded = total >= 2 || completion === 0;
+      return `- ${member}: ${total} task(s), ${completed} completed, ${completion}% completion${overloaded ? " — needs attention" : ""}`;
+    }).join("<br>");
+
+    return `
+      <p><strong>Team workload summary</strong></p>
+      <div style="color: var(--text-secondary); line-height: 1.8; margin-top: 8px;">${rows}</div>
+    `;
+  },
+
+  buildRiskMarkup() {
+    const unfinished = AppState.tasks.filter(task => task.status !== "Done");
+    if (!unfinished.length) {
+      return "<p>There are no active sprint risks right now. All tasks are completed.</p>";
+    }
+
+    const risks = unfinished
+      .filter(task => task.priority === "Urgent" || task.priority === "High" || task.status === "In Review")
+      .map(task => `- ${task.title || "Untitled task"} (${task.assignee || "Unassigned"}) — ${task.status || "Unknown status"} / ${task.priority || "Unspecified priority"}`);
+
+    return `
+      <p><strong>Current risk items</strong></p>
+      <ul style="margin: 8px 0 0 18px; line-height: 1.8; color: var(--text-secondary);">
+        ${risks.length ? risks.map(item => `<li>${item}</li>`).join("") : "<li>No major unresolved risk items found in the current task list.</li>"}
+      </ul>
+    `;
+  },
+
+  buildCiCdProgressMarkup() {
+    const sprint = this.findSprintByQuery("Sprint 1");
+    const currentSprintTasks = sprint
+      ? AppState.tasks.filter(task => (task.sprint || "").trim() === sprint.name || (task.sprint || "").trim() === sprint.id)
+      : AppState.tasks;
+
+    const relevantTasks = currentSprintTasks.filter(task => {
+      const haystack = `${task.title || ""} ${task.desc || ""}`.toLowerCase();
+      return /github|jenkins|pipeline|ci|cd|deploy|validation|build|documentation/i.test(haystack);
+    });
+
+    if (!relevantTasks.length) {
+      return "<p>No CI/CD-related tasks were found in the current sprint data.</p>";
+    }
+
+    const doneCount = relevantTasks.filter(task => task.status === "Done").length;
+    const total = relevantTasks.length;
+    const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+    return `
+      <p><strong>CI/CD progress summary</strong></p>
+      <p style="color: var(--text-secondary); margin-top: 8px;">${doneCount} of ${total} CI/CD-related tasks are complete (${pct}% complete).</p>
+      <ul style="margin: 8px 0 0 18px; line-height: 1.8; color: var(--text-secondary);">
+        ${relevantTasks.map(task => `<li><strong>${task.title || "Untitled task"}</strong> — ${task.status || "Unknown status"} (${task.assignee || "Unassigned"})</li>`).join("")}
+      </ul>
+    `;
   },
 
   applyRecommendation(id) {
@@ -1255,7 +1479,7 @@ const AIInsightsController = {
     const input = document.getElementById("aiQueryInput");
     const query = input ? input.value.trim() : "";
     if (!query) {
-      Toast.warning("Please enter a question or query for the Neural Engine.");
+      Toast.warning("Please enter a question to query the sprint data.");
       return;
     }
     this.runAIQuery(query);
@@ -1271,62 +1495,51 @@ const AIInsightsController = {
     const panel = document.getElementById("aiResponsePanel");
     const title = document.getElementById("aiResponseTitle");
     const body = document.getElementById("aiResponseBody");
-    if (!panel) return;
+    if (!panel || !title || !body) return;
+
+    const q = (query || "").trim();
+    if (!q) {
+      this.showPlaceholder();
+      return;
+    }
 
     panel.classList.add("show");
-    title.textContent = `Neural Analysis: "${query}"`;
-    body.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary);">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M12 2a10 10 0 0 1 10 10"></path>
-        </svg>
-        Synthesizing telemetry across repositories and commit velocity...
-      </div>
-    `;
+    title.textContent = "Data Summary";
 
-    setTimeout(() => {
-      let output = "";
-      const q = query.toLowerCase();
+    const lowerQuery = q.toLowerCase();
+    let output = "";
 
-      if (q.includes("risk") || q.includes("current sprint")) {
-        output = `
-          <p><strong>Sprint 42 Risk Matrix Evaluation:</strong></p>
-          <ul style="margin: 8px 0 8px 20px; line-height: 1.6;">
-            <li><strong>Velocity Index:</strong> Tracking at 48 story points (+12% above 4-week benchmark).</li>
-            <li><strong>Critical Path:</strong> <code>#TSK-107</code> (DynamoDB idempotency retry) is the primary path blocker. David Kim is currently on track to merge within 24 hours.</li>
-            <li><strong>Release Confidence:</strong> 94.2% probability of delivering all committed features before Oct 16.</li>
-          </ul>
-          <p style="color: var(--success); font-size: 12px; margin-top: 6px;">✓ Recommendation: Keep scope frozen. Defer any incoming ad-hoc requests to Sprint 43.</p>
-        `;
-      } else if (q.includes("overloaded") || q.includes("burnout") || q.includes("capacity")) {
-        output = `
-          <p><strong>Workload & Capacity Telemetry:</strong></p>
-          <ul style="margin: 8px 0 8px 20px; line-height: 1.6;">
-            <li><strong>Sarah Chen:</strong> 18 active points assigned across 4 issues (140% capacity threshold).</li>
-            <li><strong>Elena Rostova:</strong> 6 points assigned (45% capacity).</li>
-            <li><strong>Recommended Action:</strong> Shift <code>#TSK-112</code> (Redis secret rotation) from Sarah to Elena to achieve 85% equilibrium.</li>
-          </ul>
-        `;
-      } else if (q.includes("sequencing") || q.includes("order")) {
-        output = `
-          <p><strong>Optimal Task Sequencing Pipeline:</strong></p>
-          <ol style="margin: 8px 0 8px 20px; line-height: 1.6;">
-            <li>Deploy <code>#TSK-107</code> (DynamoDB idempotency) first to protect database from retry storms.</li>
-            <li>Merge <code>#TSK-102</code> (PKCE Auth flow) so frontend clients can start end-to-end regression testing.</li>
-            <li>Finalize <code>#TSK-101</code> (Redis cluster migration) during off-peak traffic window.</li>
-          </ol>
-        `;
-      } else {
-        output = `
-          <p><strong>Synthesis Summary for:</strong> <em>"${query}"</em></p>
-          <p style="margin-top: 6px; line-height: 1.5;">Sprint 42 is currently performing within target parameters with 72% of planned story points completed and zero blocking infrastructure regressions. Velocity is consistent with team capacity.</p>
-        `;
-      }
+    if (lowerQuery.includes("report") && (lowerQuery.includes("sprint") || lowerQuery.includes("report for"))) {
+      const sprint = this.findSprintByQuery(q) || AppState.sprints[0];
+      output = this.buildSprintReportMarkup(sprint);
+    } else if (this.findMemberByQuery(q) && (lowerQuery.includes("completed") || lowerQuery.includes("tasks") || lowerQuery.includes("show") || lowerQuery.includes("what has") || lowerQuery.includes("task"))) {
+      const member = this.findMemberByQuery(q);
+      output = this.buildMemberTasksMarkup(member);
+    } else if (lowerQuery.includes("pending") || lowerQuery.includes("not started") || lowerQuery.includes("which tasks are pending")) {
+      output = this.buildPendingTasksMarkup();
+    } else if (lowerQuery.includes("overloaded") || lowerQuery.includes("workload") || lowerQuery.includes("capacity")) {
+      output = this.buildWorkloadMarkup();
+    } else if (lowerQuery.includes("risk") || lowerQuery.includes("risk")) {
+      output = this.buildRiskMarkup();
+    } else if (lowerQuery.includes("ci/cd") || lowerQuery.includes("ci cd") || lowerQuery.includes("ci-cd") || lowerQuery.includes("summarize our ci") || lowerQuery.includes("cd progress")) {
+      output = this.buildCiCdProgressMarkup();
+    } else {
+      output = `
+        <p><strong>Query not recognized.</strong> Try a supported question such as:</p>
+        <ul style="margin: 8px 0 0 18px; line-height: 1.8; color: var(--text-secondary);">
+          <li>Generate a report for Sprint 1</li>
+          <li>What has Kishore completed?</li>
+          <li>Which tasks are pending?</li>
+          <li>Who is overloaded?</li>
+          <li>What are the sprint risks?</li>
+          <li>Summarize our CI/CD progress</li>
+          <li>Show Anju's tasks</li>
+        </ul>
+      `;
+    }
 
-      body.innerHTML = output;
-      Toast.info("AI analysis complete.");
-    }, 450);
+    body.innerHTML = output;
+    Toast.info("Data summary updated.");
   },
 
   closeResponse() {
@@ -1432,6 +1645,10 @@ const TaskModal = {
     this.close();
     TasksController.render();
     OverviewController.render();
+    if (typeof AIInsightsController !== "undefined" && typeof AIInsightsController.generateReport === "function") {
+      AIInsightsController.populateSprintSelector();
+      AIInsightsController.generateReport();
+    }
   }
 };
 
@@ -1754,3 +1971,496 @@ const App = {
 document.addEventListener("DOMContentLoaded", () => {
   App.init();
 });
+
+/* ============================================================
+   SprintIQ — Task & Sprint Workflow Enhancements
+   Add this code at the END of your existing script.js
+   ============================================================ */
+
+const SprintIQWorkflow = {
+  sprintKey(value) {
+    if (!value || value === "Backlog") return "Backlog";
+    return String(value).split(":")[0].trim();
+  },
+
+  sprintOptionValue(sprint) {
+    return this.sprintKey(sprint.name);
+  },
+
+  escape(value) {
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[ch]));
+  },
+
+  ensureDueDateField() {
+    const points = document.getElementById("taskFormPoints");
+
+    if (!points || document.getElementById("taskFormDueDate")) return;
+
+    const fieldWrap =
+      points.closest(".form-group") || points.parentElement;
+
+    if (!fieldWrap || !fieldWrap.parentElement) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = fieldWrap.className || "form-group";
+
+    wrapper.innerHTML = `
+      <label for="taskFormDueDate">Due Date</label>
+      <input
+        id="taskFormDueDate"
+        name="dueDate"
+        type="date"
+        style="width:100%;box-sizing:border-box;"
+      />
+    `;
+
+    fieldWrap.parentElement.insertBefore(
+      wrapper,
+      fieldWrap.nextSibling
+    );
+  },
+
+  refreshTaskSelects() {
+    const projectSelect =
+      document.getElementById("taskFormProject");
+
+    if (projectSelect) {
+      const selected = projectSelect.value;
+
+      projectSelect.innerHTML = AppState.projects
+        .map(project => `
+          <option value="${this.escape(project.title)}">
+            ${this.escape(project.title)}
+          </option>
+        `)
+        .join("");
+
+      if (AppState.projects.some(p => p.title === selected)) {
+        projectSelect.value = selected;
+      }
+    }
+
+    const sprintSelect =
+      document.getElementById("taskFormSprint");
+
+    if (sprintSelect) {
+      const selected = sprintSelect.value || "Backlog";
+
+      const options = [
+        `<option value="Backlog">Backlog (No sprint)</option>`,
+        ...AppState.sprints.map(sprint => {
+          const value = this.sprintOptionValue(sprint);
+
+          return `
+            <option value="${this.escape(value)}">
+              ${this.escape(sprint.name)}
+            </option>
+          `;
+        })
+      ];
+
+      sprintSelect.innerHTML = options.join("");
+
+      sprintSelect.value = [
+        ...sprintSelect.options
+      ].some(option => option.value === selected)
+        ? selected
+        : "Backlog";
+    }
+  },
+
+  refreshSprintProgress() {
+    AppState.sprints.forEach(sprint => {
+      const key = this.sprintOptionValue(sprint);
+
+      const sprintTasks = AppState.tasks.filter(
+        task => this.sprintKey(task.sprint) === key
+      );
+
+      sprint.totalPoints = sprintTasks.reduce(
+        (sum, task) => sum + (Number(task.points) || 0),
+        0
+      );
+
+      sprint.burnedPoints = sprintTasks
+        .filter(task => task.status === "Done")
+        .reduce(
+          (sum, task) => sum + (Number(task.points) || 0),
+          0
+        );
+    });
+  }
+};
+
+
+// ------------------------------------------------------------
+// TASK CREATION
+// ------------------------------------------------------------
+
+const originalTaskModalOpenCreate =
+  TaskModal.openCreate.bind(TaskModal);
+
+TaskModal.openCreate = function(defaultStatus = "To Do") {
+  originalTaskModalOpenCreate(defaultStatus);
+
+  SprintIQWorkflow.ensureDueDateField();
+  SprintIQWorkflow.refreshTaskSelects();
+
+  const dueDate =
+    document.getElementById("taskFormDueDate");
+
+  if (dueDate) dueDate.value = "";
+};
+
+
+// ------------------------------------------------------------
+// TASK EDITING
+// ------------------------------------------------------------
+
+const originalTaskModalOpenEdit =
+  TaskModal.openEdit.bind(TaskModal);
+
+TaskModal.openEdit = function(id) {
+  originalTaskModalOpenEdit(id);
+
+  SprintIQWorkflow.ensureDueDateField();
+  SprintIQWorkflow.refreshTaskSelects();
+
+  const task = AppState.tasks.find(task => task.id === id);
+  const dueDate =
+    document.getElementById("taskFormDueDate");
+
+  if (task && dueDate) {
+    dueDate.value = task.dueDate || "";
+  }
+};
+
+
+// ------------------------------------------------------------
+// SAVE TASK AND DUE DATE
+// ------------------------------------------------------------
+
+const originalTaskModalHandleSubmit =
+  TaskModal.handleSubmit.bind(TaskModal);
+
+TaskModal.handleSubmit = function() {
+  const idBeforeSubmit =
+    document.getElementById("taskFormId")?.value;
+
+  const dueDate =
+    document.getElementById("taskFormDueDate")?.value || "";
+
+  const title =
+    document.getElementById("taskFormTitle")?.value.trim();
+
+  if (!title) {
+    Toast.warning("Please enter a task title.");
+    return;
+  }
+
+  originalTaskModalHandleSubmit();
+
+  const task = idBeforeSubmit
+    ? AppState.tasks.find(task => task.id === idBeforeSubmit)
+    : AppState.tasks[0];
+
+  if (task && task.title === title) {
+    task.dueDate = dueDate;
+
+    StorageManager.saveState(AppState);
+
+    this.renderTaskViews();
+  }
+};
+
+
+TaskModal.renderTaskViews = function() {
+  TasksController.render();
+  OverviewController.render();
+
+  SprintIQWorkflow.refreshSprintProgress();
+  SprintsController.render();
+};
+
+
+// ------------------------------------------------------------
+// SPRINT PROGRESS
+// ------------------------------------------------------------
+
+const originalSprintsRender =
+  SprintsController.render.bind(SprintsController);
+
+SprintsController.render = function() {
+  SprintIQWorkflow.refreshSprintProgress();
+  originalSprintsRender();
+};
+
+
+// ------------------------------------------------------------
+// SPRINT DATE VALIDATION
+// ------------------------------------------------------------
+
+const originalSprintModalHandleSubmit =
+  SprintModal.handleSubmit.bind(SprintModal);
+
+SprintModal.handleSubmit = function() {
+  const start =
+    document.getElementById("sprintFormStart")?.value || "";
+
+  const end =
+    document.getElementById("sprintFormEnd")?.value || "";
+
+  if (start && end && end < start) {
+    Toast.warning(
+      "Sprint end date must be on or after its start date."
+    );
+    return;
+  }
+
+  originalSprintModalHandleSubmit();
+
+  SprintIQWorkflow.refreshSprintProgress();
+  SprintsController.render();
+};
+
+
+// ------------------------------------------------------------
+// UPDATE PROGRESS WHEN TASK STATUS CHANGES
+// ------------------------------------------------------------
+
+const originalAdvanceStatus =
+  TasksController.advanceStatus.bind(TasksController);
+
+TasksController.advanceStatus = function(id) {
+  originalAdvanceStatus(id);
+
+  SprintIQWorkflow.refreshSprintProgress();
+  SprintsController.render();
+};
+
+
+// ------------------------------------------------------------
+// UPDATE PROGRESS WHEN A TASK IS DELETED
+// ------------------------------------------------------------
+
+const originalDeleteTask =
+  TasksController.deleteTask.bind(TasksController);
+
+TasksController.deleteTask = function(id) {
+  originalDeleteTask(id);
+
+  SprintIQWorkflow.refreshSprintProgress();
+  SprintsController.render();
+};
+
+
+// ------------------------------------------------------------
+// SHOW DUE DATE ON KANBAN CARDS
+// ------------------------------------------------------------
+
+const originalRenderKanban =
+  TasksController.renderKanban.bind(TasksController);
+
+TasksController.renderKanban = function(tasks) {
+  originalRenderKanban(tasks);
+
+  tasks.forEach(task => {
+    if (!task.dueDate) return;
+
+    const card =
+      document.getElementById(`task-${task.id}`);
+
+    if (!card || card.querySelector(".task-due-date")) {
+      return;
+    }
+
+    const meta = document.createElement("div");
+
+    meta.className = "task-due-date";
+
+    meta.style.cssText =
+      "font-size:11px;color:var(--text-muted);margin-top:7px;";
+
+    meta.textContent = `Due: ${task.dueDate}`;
+
+    const footer =
+      card.querySelector(".task-card-footer");
+
+    if (footer) {
+      card.insertBefore(meta, footer);
+    }
+  });
+};
+
+
+// ------------------------------------------------------------
+// SHOW DUE DATE IN TASK LIST
+// ------------------------------------------------------------
+
+const originalRenderList =
+  TasksController.renderList.bind(TasksController);
+
+TasksController.renderList = function(tasks) {
+  originalRenderList(tasks);
+
+  const tbody =
+    document.getElementById("tasksListTbody");
+
+  if (!tbody) return;
+
+  tasks.forEach(task => {
+    if (!task.dueDate) return;
+
+    const rows = [...tbody.querySelectorAll("tr")];
+
+    const row = rows.find(tr =>
+      tr.textContent.includes(task.id)
+    );
+
+    if (row && !row.querySelector(".task-due-date")) {
+      const cell = row.querySelector("td:nth-child(2)");
+
+      if (cell) {
+        const due = document.createElement("div");
+
+        due.className = "task-due-date";
+
+        due.style.cssText =
+          "font-size:11px;color:var(--text-muted);margin-top:3px;";
+
+        due.textContent = `Due: ${task.dueDate}`;
+
+        cell.appendChild(due);
+      }
+    }
+  });
+};
+
+
+// ------------------------------------------------------------
+// INITIALIZE WORKFLOW ENHANCEMENTS
+// ------------------------------------------------------------
+
+document.addEventListener("DOMContentLoaded", () => {
+  SprintIQWorkflow.ensureDueDateField();
+  SprintIQWorkflow.refreshSprintProgress();
+});
+
+/* =========================================
+   SPRINTIQ - TEAM PROJECT CONFIGURATION
+   ========================================= */
+
+(function setupSprintIQTeam() {
+  if (typeof AppState === "undefined") {
+    console.error("SprintIQ AppState was not found.");
+    return;
+  }
+
+  const teamMembers = [
+    "Kishore",
+    "Mohan",
+    "Anju",
+    "Anika",
+    "Anish"
+  ];
+
+  const projectName =
+    "SprintIQ - AI-Based Agile Decision Support System";
+
+  // Set up the actual project
+  AppState.projects = [
+    {
+      id: "PRJ-1",
+      title: projectName,
+      name: projectName,
+      desc: "AI-based decision support for agile teams with CI/CD pipeline implementation.",
+      description: "Our team's agile project and CI/CD workflow.",
+      status: "Active",
+      progress: 0,
+      members: teamMembers
+    }
+  ];
+
+  // Set up our first sprint
+  AppState.sprints = [
+    {
+      id: "SPR-1",
+      name: "Sprint 1 - CI/CD Pipeline Implementation",
+      goal: "Configure and test the GitHub and Jenkins CI/CD pipeline.",
+      startDate: "2026-10-13",
+      endDate: "2026-10-27",
+      status: "Active",
+      totalPoints: 25,
+      burnedPoints: 0
+    }
+  ];
+
+  // Create tasks for our team
+  const tasks = [
+    {
+      id: "TSK-101",
+      title: "GitHub Repository Setup",
+      desc: "Organize the repository and source control workflow.",
+      assignee: "Kishore",
+      priority: "High",
+      status: "To Do",
+      points: 3
+    },
+    {
+      id: "TSK-102",
+      title: "Jenkins Pipeline Configuration",
+      desc: "Connect Jenkins to GitHub and configure source checkout.",
+      assignee: "Mohan",
+      priority: "High",
+      status: "To Do",
+      points: 5
+    },
+    {
+      id: "TSK-103",
+      title: "Automated Validation and Build",
+      desc: "Add file validation and build verification stages.",
+      assignee: "Anju",
+      priority: "High",
+      status: "To Do",
+      points: 5
+    },
+    {
+      id: "TSK-104",
+      title: "Deployment Configuration",
+      desc: "Prepare the website for deployment to Vercel.",
+      assignee: "Anika",
+      priority: "Medium",
+      status: "To Do",
+      points: 5
+    },
+    {
+      id: "TSK-105",
+      title: "Pipeline Testing and Documentation",
+      desc: "Test the pipeline and document the results.",
+      assignee: "Anish",
+      priority: "Medium",
+      status: "To Do",
+      points: 7
+    }
+  ];
+
+  AppState.tasks = tasks.map(task => ({
+    ...task,
+    project: projectName,
+    sprint: "Sprint 1 - CI/CD Pipeline Implementation",
+    type: "Task"
+  }));
+
+  if (typeof StorageManager !== "undefined" &&
+      typeof StorageManager.saveState === "function") {
+    StorageManager.saveState(AppState);
+  }
+
+  console.log("SprintIQ team project data initialized.");
+})();

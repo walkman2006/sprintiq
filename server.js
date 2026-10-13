@@ -3,7 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 3000;
+const DEFAULT_PORT = Number(process.env.PORT) || 3000;
 const MIME_TYPES = {
   '.html': 'text/html; charset=UTF-8',
   '.css': 'text/css; charset=UTF-8',
@@ -36,6 +36,21 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`SprintIQ server running at http://localhost:${PORT}`);
-});
+function listenOnAvailablePort(port) {
+  server.once('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.warn(`Port ${port} is busy. Trying ${port + 1}...`);
+      listenOnAvailablePort(port + 1);
+      return;
+    }
+
+    console.error('Failed to start SprintIQ server:', error);
+    process.exit(1);
+  });
+
+  server.listen(port, () => {
+    console.log(`SprintIQ server running at http://localhost:${port}`);
+  });
+}
+
+listenOnAvailablePort(DEFAULT_PORT);

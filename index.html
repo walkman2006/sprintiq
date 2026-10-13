@@ -170,7 +170,7 @@
               <path d="M9 11l3 3L22 4"></path>
               <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
             </svg>
-            <span>Tasks</span>
+          <span>Kanban Board</span>
           </div>
           <span class="nav-counter" id="navTaskCount">12</span>
         </a>
@@ -308,7 +308,7 @@
               </div>
               <div class="ai-summary-text">
                 <h3>
-                  Sprint 42 Health: 94% On Schedule
+                  Sprint 1 — CI/CD Pipeline Implementation Health: 94% On Schedule
                   <span class="badge badge-success">Low Risk</span>
                 </h3>
                 <p>Velocity is trending +6% above 4-week moving average. 1 potential review bottleneck identified in Auth Service.</p>
@@ -338,7 +338,7 @@
                 </div>
               </div>
               <div class="stat-value-group">
-                <span class="stat-value" id="statActiveSprint">Sprint 42</span>
+                <span class="stat-value" id="statActiveSprint">Sprint 1 — CI/CD Pipeline Implementation</span>
               </div>
               <div class="stat-footer-text">Day 7 of 14 • Ends in 3 days</div>
             </div>
@@ -439,7 +439,7 @@
             <div class="card active-sprint-card">
               <div>
                 <div class="card-header" style="margin-bottom: 8px;">
-                  <h3 class="card-title">Sprint 42 Status</h3>
+                  <h3 class="card-title">Sprint 1 — CI/CD Pipeline Implementation Status</h3>
                   <span class="badge badge-success">In Progress</span>
                 </div>
                 <p class="sprint-goal-text">Goal: Ship Kubernetes production rollout and refresh token OAuth2 security layer.</p>
@@ -801,7 +801,7 @@
           <!-- Interactive AI Prompt Inquiry Box -->
           <div class="ai-prompt-box">
             <div class="ai-input-row">
-              <input type="text" id="aiQueryInput" class="ai-input-field" placeholder="Ask SprintIQ AI (e.g. 'Who is at risk of burnout?' or 'Forecast sprint completion')...">
+              <input type="text" id="aiQueryInput" class="ai-input-field" placeholder="Ask a question about your sprint, tasks, team workload, or project progress." onkeydown="if (event.key === 'Enter') { AIInsightsController.askAI(); }">
               <button class="btn btn-primary" onclick="AIInsightsController.askAI()">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -812,16 +812,19 @@
             </div>
             <div class="ai-quick-chips">
               <span style="font-size: 11px; color: var(--text-muted);">Quick prompts:</span>
-              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Analyze current sprint risks')">Analyze sprint risks</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Generate a report for Sprint 1')">Generate report for Sprint 1</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('What has Kishore completed?')">Kishore completed</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Which tasks are pending?')">Pending tasks</span>
               <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Who is overloaded?')">Who is overloaded?</span>
-              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Recommend optimal task sequencing')">Sequencing recommendations</span>
-              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Generate retrospective draft')">Draft retrospective</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('What are the sprint risks?')">Sprint risks</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Summarize our CI/CD progress')">CI/CD progress</span>
+              <span class="ai-chip" onclick="AIInsightsController.runPromptChip('Show Anju\'s tasks')">Anju's tasks</span>
             </div>
 
             <!-- Dynamic AI Response Panel -->
             <div class="ai-response-container" id="aiResponsePanel">
               <div class="ai-response-header">
-                <span class="badge badge-secondary" id="aiResponseTitle">Analysis Output</span>
+                <span class="badge badge-secondary" id="aiResponseTitle">Data Summary</span>
                 <button class="btn btn-ghost btn-sm" onclick="AIInsightsController.closeResponse()">Dismiss</button>
               </div>
               <div class="ai-response-body" id="aiResponseBody">
