@@ -8,10 +8,10 @@
 // ============================================================================
 const INITIAL_STATE = {
   currentUser: {
-    name: "Alex Rivera",
-    role: "Staff Tech Lead",
-    email: "alex.rivera@sprintiq.internal",
-    avatar: "AR"
+    name: "Kishore",
+    role: "Team Member",
+    email: "kishore@sprintiq.internal",
+    avatar: "KI"
   },
   isAuthenticated: true,
   themeGlow: true,
@@ -253,48 +253,7 @@ const INITIAL_STATE = {
       updatedAt: "2d ago"
     }
   ],
-  recommendations: [
-    {
-      id: "rec-1",
-      type: "Bottleneck",
-      title: "PR Review Latency in Auth Service",
-      body: "Marcus Vance has 3 pull requests awaiting review totaling 14 story points. AI models forecast an 18-hour delay on Sprint 42 milestone if unaddressed.",
-      metric: "Potential delay: 18h",
-      badgeClass: "badge-warning",
-      actionText: "Reassign 1 PR to Sarah Chen",
-      applied: false
-    },
-    {
-      id: "rec-2",
-      type: "Workload",
-      title: "High Workload Variance on Sarah Chen",
-      body: "Sarah Chen is assigned 18 active points (140% capacity limit), while Elena Rostova is at 45% capacity. Workload rebalance recommended.",
-      metric: "Over-allocation: +40%",
-      badgeClass: "badge-error",
-      actionText: "Rebalance 3pts to Elena",
-      applied: false
-    },
-    {
-      id: "rec-3",
-      type: "Scope",
-      title: "Scope Creep Defense: Defer TSK-108",
-      body: "Task #TSK-108 (Session cleanup refactor) is low priority and not on the critical path. Deferring to Sprint 43 ensures on-time release with 98% confidence.",
-      metric: "Confidence boost: +4.2%",
-      badgeClass: "badge-primary",
-      actionText: "Defer TSK-108 to Sprint 43",
-      applied: false
-    },
-    {
-      id: "rec-4",
-      type: "Quality",
-      title: "Test Flakiness Detected in Payment Webhooks",
-      body: "Telemetry detected 3 transient retries on Stripe webhook integration tests. AI recommends scheduling an automated mock test refactor task.",
-      metric: "Flakiness risk: 24%",
-      badgeClass: "badge-secondary",
-      actionText: "Generate Test Refactor Task",
-      applied: false
-    }
-  ],
+  recommendations: [],
   notifications: [
     {
       id: "notif-1",
@@ -1181,11 +1140,98 @@ const TasksController = {
 // 10. AI Insights Controller & Recommendation Engine
 // ============================================================================
 const AIInsightsController = {
+  buildRecommendations() {
+    const teamMembers = ["Kishore", "Mohan", "Anju", "Anika", "Anish"];
+    const sprintTasks = Array.isArray(AppState.tasks) ? AppState.tasks : [];
+    const recommendations = [];
+
+    const activeSprint = Array.isArray(AppState.sprints) && AppState.sprints.length
+      ? AppState.sprints[0]
+      : null;
+
+    const pipelineTasks = sprintTasks.filter(task => {
+      const text = `${task.title || ""} ${task.desc || ""}`.toLowerCase();
+      return /github|jenkins|pipeline|ci|cd|build|deploy|documentation|repository/i.test(text);
+    });
+
+    if (pipelineTasks.length) {
+      const doneCount = pipelineTasks.filter(task => task.status === "Done").length;
+      const pct = pipelineTasks.length > 0 ? Math.round((doneCount / pipelineTasks.length) * 100) : 0;
+      recommendations.push({
+        id: "ci-cd-readiness",
+        type: "Delivery",
+        title: "CI/CD pipeline readiness",
+        body: `Current SprintIQ work includes ${pipelineTasks.length} pipeline-related tasks. ${doneCount} are already complete, leaving ${pipelineTasks.length - doneCount} remaining actions to finish the delivery path.`,
+        metric: `${pct}% ready`,
+        badgeClass: "badge-primary",
+        actionText: "Review pipeline tasks",
+        applied: false
+      });
+    }
+
+    const workloadSummary = teamMembers.map(member => {
+      const memberTasks = sprintTasks.filter(task => (task.assignee || "").trim() === member);
+      return {
+        member,
+        total: memberTasks.length,
+        completed: memberTasks.filter(task => task.status === "Done").length,
+        pending: memberTasks.filter(task => task.status !== "Done").length
+      };
+    });
+
+    const highestLoad = workloadSummary.sort((a, b) => b.total - a.total)[0];
+    if (highestLoad && highestLoad.total > 0) {
+      recommendations.push({
+        id: "workload-balance",
+        type: "Workload",
+        title: `${highestLoad.member} has the largest active assignment set`,
+        body: `${highestLoad.member} is assigned ${highestLoad.total} task(s) with ${highestLoad.pending} still pending. The team can rebalance work around the remaining sprint scope if needed.`,
+        metric: `${highestLoad.total} assigned`,
+        badgeClass: "badge-warning",
+        actionText: "Review team load",
+        applied: false
+      });
+    }
+
+    if (activeSprint) {
+      const activeSprintTasks = sprintTasks.filter(task => (task.sprint || "").trim() === activeSprint.name || (task.sprint || "").trim() === activeSprint.id);
+      const completeCount = activeSprintTasks.filter(task => task.status === "Done").length;
+      const totalCount = activeSprintTasks.length;
+      const completionPct = totalCount > 0 ? Math.round((completeCount / totalCount) * 100) : 0;
+      recommendations.push({
+        id: "sprint-progress",
+        type: "Sprint",
+        title: `${activeSprint.name} progress snapshot`,
+        body: `${completeCount} of ${totalCount} sprint tasks are complete, resulting in ${completionPct}% completion. This gives a clear signal for what still needs focus before the sprint ends.`,
+        metric: `${completionPct}% complete`,
+        badgeClass: "badge-secondary",
+        actionText: "Open sprint summary",
+        applied: false
+      });
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push({
+        id: "empty-state",
+        type: "Status",
+        title: "No active recommendations available",
+        body: "The current SprintIQ task data does not contain enough information to generate a recommendation yet. Add tasks, assign owners, and update statuses to unlock further guidance.",
+        metric: "Data pending",
+        badgeClass: "badge-neutral",
+        actionText: "No action",
+        applied: false
+      });
+    }
+
+    return recommendations.slice(0, 4);
+  },
+
   render() {
     const container = document.getElementById("recommendationsContainer");
     if (!container) return;
 
     this.showPlaceholder();
+    AppState.recommendations = this.buildRecommendations();
 
     container.innerHTML = AppState.recommendations.map(rec => {
       const isApplied = rec.applied;
@@ -1206,7 +1252,7 @@ const AIInsightsController = {
           </div>
 
           <div class="rec-footer">
-            <span style="font-size: 11px; color: var(--text-muted);">Confidence 96.2%</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Data-driven summary</span>
             <button class="btn ${isApplied ? 'btn-secondary' : 'btn-primary'} btn-sm" ${isApplied ? 'disabled' : ''} onclick="AIInsightsController.applyRecommendation('${rec.id}')">
               ${isApplied ? 'Completed' : rec.actionText}
             </button>
@@ -1439,37 +1485,31 @@ const AIInsightsController = {
 
     rec.applied = true;
 
-    // Apply tangible modifications to sample state
-    if (id === "rec-1") {
-      // Reassign task from Marcus to Sarah
-      const t = AppState.tasks.find(x => x.id === "TSK-102");
-      if (t) t.assignee = "Sarah Chen";
-    } else if (id === "rec-2") {
-      // Reassign task from Sarah to Elena
-      const t = AppState.tasks.find(x => x.id === "TSK-112");
-      if (t) t.assignee = "Elena Rostova";
-    } else if (id === "rec-3") {
-      // Defer TSK-108 to Sprint 43
-      const t = AppState.tasks.find(x => x.id === "TSK-108");
-      if (t) t.sprint = "Sprint 43";
-    } else if (id === "rec-4") {
-      // Generate test refactor task
-      AppState.tasks.unshift({
-        id: "TSK-" + (100 + AppState.tasks.length + 1),
-        title: "Stabilize Payment Webhook Mock Test Harness",
-        desc: "Created automatically via AI Neural Engine recommendation to address transient test retries.",
-        project: "Payment Gateway Webhooks V3",
-        sprint: "Sprint 42",
-        status: "To Do",
-        priority: "High",
-        assignee: "David Kim",
-        points: 3,
-        updatedAt: "Just now"
-      });
+    if (id === "ci-cd-readiness") {
+      const pipelineTask = AppState.tasks.find(task => /github|jenkins|pipeline|deploy|build|repository/i.test(`${task.title || ""} ${task.desc || ""}`));
+      if (pipelineTask) {
+        pipelineTask.status = "In Review";
+      }
+    } else if (id === "workload-balance") {
+      const highestLoad = AppState.tasks
+        .filter(task => task.status !== "Done")
+        .sort((a, b) => Number(b.points || 0) - Number(a.points || 0))[0];
+      if (highestLoad) {
+        highestLoad.status = "In Progress";
+      }
+    } else if (id === "sprint-progress") {
+      const latestTask = AppState.tasks.find(task => task.status === "To Do");
+      if (latestTask) {
+        latestTask.status = "In Progress";
+      }
+    } else if (id === "empty-state") {
+      Toast.info("No recommendation action is available for the current task set.");
+      this.render();
+      return;
     }
 
     StorageManager.saveState(AppState);
-    Toast.success(`Applied AI Recommendation: "${rec.title}"`);
+    Toast.success(`Applied recommendation: "${rec.title}"`);
 
     this.render();
     OverviewController.render();
