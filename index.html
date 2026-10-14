@@ -175,6 +175,15 @@
           <span class="nav-counter" id="navTaskCount">12</span>
         </a>
 
+        <a class="nav-item" data-view="team-management" onclick="Router.navigate('team-management')">
+          <div class="nav-item-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Team Management</span>
+          </div>
+        </a>
+
         <a class="nav-item" data-view="ai-planner" onclick="Router.navigate('ai-planner')">
           <div class="nav-item-left">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -637,13 +646,37 @@
           </section>
 
           <section class="card planner-section">
-            <div class="planner-section-heading"><div><h3>Team profiles</h3><p>Skills are intentionally blank until confirmed by your team lead.</p></div><button class="btn btn-secondary btn-sm" onclick="PlannerController.addProfile()">Add member</button></div>
-            <div id="plannerProfiles" class="planner-profiles"></div>
+            <div class="planner-section-heading"><div><h3>Planning team</h3><p>Choose the team size and members from saved profiles.</p></div><button class="btn btn-secondary btn-sm" onclick="PlannerController.autoSelectTeam()">Auto-select team</button></div>
+            <div class="form-group"><label for="plannerTeamSize">Number of team members needed</label><input id="plannerTeamSize" class="form-input no-icon" type="number" min="1" step="1" placeholder="Select team size" oninput="PlannerController.onTeamSizeChange()"></div>
+            <div id="plannerTeamSelection" class="planner-team-selection"></div>
+            <p id="plannerSelectedTeamSummary" class="planner-selected-team-summary">Select a team size to see eligible saved profiles.</p>
           </section>
         </div>
 
         <div class="planner-generate-row"><button class="btn btn-primary" onclick="PlannerController.generate()">Generate Project Plan</button><span>Nothing is created in Projects, Sprints, or Kanban until approval.</span></div>
         <section id="plannerReview" class="planner-review" aria-live="polite"></section>
+      </section>
+
+      <section id="view-team-management" class="view-container">
+        <div class="view-header">
+          <div class="view-header-title"><h2>Team Management</h2><p>Maintain saved member profiles, skills, and current capacity.</p></div>
+          <button class="btn btn-primary btn-sm" onclick="TeamManagementController.addMember()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>Add Member</button>
+        </div>
+        <div id="teamMemberEditor" class="card team-member-editor" hidden>
+          <div class="planner-section-heading"><div><h3 id="teamMemberEditorTitle">Add team member</h3><p>Skills should reflect expertise confirmed by the team lead.</p></div></div>
+          <div class="team-member-form-grid">
+            <div class="form-group"><label for="teamMemberName">Name</label><input id="teamMemberName" class="form-input no-icon" maxlength="80"></div>
+            <div class="form-group"><label for="teamMemberRole">Role or specialization <span class="planner-optional">Optional</span></label><input id="teamMemberRole" class="form-input no-icon" maxlength="100" placeholder="e.g. Product, QA, Engineering"></div>
+            <div class="form-group"><label for="teamMemberSkills">Skills and technical expertise</label><textarea id="teamMemberSkills" class="form-input no-icon" rows="2" placeholder="Enter confirmed skills, comma-separated"></textarea></div>
+            <div class="form-row">
+              <div class="form-group"><label for="teamMemberExperience">Experience level</label><input id="teamMemberExperience" class="form-input no-icon" maxlength="80" placeholder="Enter experience level"></div>
+              <div class="form-group"><label for="teamMemberCapacity">Weekly capacity (hours)</label><input id="teamMemberCapacity" class="form-input no-icon" type="number" min="1" max="80" step="1" required></div>
+            </div>
+            <div class="form-group"><label for="teamMemberWorkload">Current committed workload (hours)</label><input id="teamMemberWorkload" class="form-input no-icon" type="number" min="0" max="500" step="1" required></div>
+          </div>
+          <div class="team-editor-actions"><button class="btn btn-secondary btn-sm" onclick="TeamManagementController.cancelEdit()">Cancel</button><button class="btn btn-primary btn-sm" onclick="TeamManagementController.saveMember()">Save Member</button></div>
+        </div>
+        <div id="teamMembersGrid" class="team-members-grid"></div>
       </section>
 
       <!-- ====================================================================

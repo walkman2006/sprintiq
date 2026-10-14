@@ -2612,14 +2612,43 @@ button {
 .planner-conflicts, .planner-ready { padding: 12px 14px; border-radius: var(--radius-sm); font-size: 12px; }
 .planner-conflicts { color: var(--error); background: var(--error-bg); border: 1px solid var(--error-border); }
 .planner-conflicts ul { margin: 6px 0 0 18px; }
+.planner-capacity-warning { padding: 12px 14px; color: var(--warning); background: var(--warning-bg); border: 1px solid var(--warning-border); border-radius: var(--radius-sm); font-size: 12px; }
+.planner-capacity-warning ul { margin: 6px 0 0 18px; }
 .planner-ready { color: var(--success); background: var(--success-bg); border: 1px solid var(--success-border); }
 .planner-approved { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px; background: var(--success-bg); border: 1px solid var(--success-border); border-radius: var(--radius-sm); }
 .planner-approved span { flex: 1 1 240px; color: var(--text-secondary); font-size: 12px; }
 .planner-empty { color: var(--text-muted); }
+.planner-team-selection { display: grid; gap: 8px; }
+.planner-member-option { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; background: var(--bg-main); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+.planner-member-option:has(input:checked) { border-color: var(--accent-primary); background: rgba(100, 140, 255, 0.06); }
+.planner-member-option input { margin-top: 3px; accent-color: var(--accent-primary); }
+.planner-member-option.is-ineligible { cursor: not-allowed; opacity: 0.72; }
+.planner-member-option.is-at-capacity { border-color: var(--warning-border); background: rgba(251, 191, 36, 0.035); }
+.planner-member-option input:disabled { cursor: not-allowed; }
+.planner-member-option span { display: grid; gap: 4px; min-width: 0; }
+.planner-member-option strong { font-size: 12px; }
+.planner-member-option small { color: var(--text-muted); font-size: 10px; overflow-wrap: anywhere; }
+.planner-member-option .planner-ineligible-reason { color: var(--warning); }
+.planner-selected-team-summary { margin-top: 10px; color: var(--text-secondary); font-size: 11px; }
+.team-member-editor { margin-bottom: 16px; padding: 18px; }
+.team-member-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.team-member-form-grid .form-row { align-items: start; }
+.team-editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.team-members-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.team-member-card { min-width: 0; padding: 16px; box-shadow: var(--shadow-sm); }
+.team-member-card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.team-member-card-heading h3 { font-size: 14px; overflow-wrap: anywhere; }
+.team-member-card-heading p { margin-top: 3px; color: var(--text-muted); font-size: 11px; }
+.team-member-details { display: grid; gap: 10px; padding: 12px 0; }
+.team-member-details dt { margin-bottom: 4px; color: var(--text-muted); font-size: 10px; }
+.team-member-details dd { display: flex; flex-wrap: wrap; gap: 4px; color: var(--text-secondary); font-size: 11px; }
+.team-skill-tag { padding: 2px 7px; color: var(--text-secondary); background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; }
+.team-member-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 
 @media (max-width: 1100px) {
   .planner-layout { grid-template-columns: 1fr; }
   .planner-profiles { max-height: none; }
+  .team-members-grid { grid-template-columns: 1fr 1fr; }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2669,6 +2698,7 @@ button {
   .planner-review-heading, .planner-generate-row { align-items: stretch; flex-direction: column; }
   .planner-review-fields, .planner-profile-row .form-row { grid-template-columns: 1fr; }
   .planner-load-row { grid-template-columns: 1fr 1fr; }
+  .team-members-grid, .team-member-form-grid { grid-template-columns: 1fr; }
   .stats-grid {
     grid-template-columns: 1fr;
   }

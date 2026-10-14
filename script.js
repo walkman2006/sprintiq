@@ -405,6 +405,7 @@ const Router = {
         "projects": "Projects",
         "sprints": "Sprints",
         "tasks": "Sprint Tasks",
+        "team-management": "Team Management",
         "ai-planner": "AI Project Planner",
         "ai-insights": "AI Insights & Recommendations",
         "settings": "System Settings"
@@ -423,6 +424,7 @@ const Router = {
     if (viewName === "projects") ProjectsController.render();
     if (viewName === "sprints") SprintsController.render();
     if (viewName === "tasks") TasksController.render();
+    if (viewName === "team-management") TeamManagementController.render();
     if (viewName === "ai-planner") PlannerController.render();
     if (viewName === "ai-insights") AIInsightsController.render();
   },
@@ -539,10 +541,9 @@ const OverviewController = {
   },
 
   getTeamNames() {
-    const knownMembers = ["Kishore", "Mohan", "Anju", "Anika", "Anish"];
     const profiles = Array.isArray(AppState.teamProfiles) ? AppState.teamProfiles.map(profile => profile.name) : [];
     const assignees = (AppState.tasks || []).flatMap(task => [task.assignee, ...(task.collaborators || [])]);
-    return [...new Set([...knownMembers, ...profiles, ...assignees].map(name => String(name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    return [...new Set([...profiles, ...assignees].map(name => String(name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   },
 
   getActiveSprint() {
@@ -2384,11 +2385,9 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("SprintIQ team project data initialized.");
 })();
 
-// Local rules prototype. Keep this provider boundary isolated so a secured
-// server-side AI provider can replace createPlan() without changing approval.
-const PlannerController = {
-  draft: null,
-  defaultNames: ["Kishore", "Mohan", "Anju", "Anika", "Anish"],
+// Team profiles remain in one persisted AppState collection.
+const TeamManagementController = {
+  editingIndex: null,
 
   escape(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -2397,78 +2396,258 @@ const PlannerController = {
   },
 
   ensureProfiles() {
-    if (!Array.isArray(AppState.teamProfiles)) AppState.teamProfiles = [];
-    this.defaultNames.forEach(name => {
-      if (!AppState.teamProfiles.some(profile => profile.name === name)) {
-        AppState.teamProfiles.push({ name, skills: "", experience: "", capacityHours: 30, currentWorkloadHours: 0 });
-      }
-    });
+    let changed = false;
+    const needsInitialProfiles = !Array.isArray(AppState.teamProfiles);
+    if (needsInitialProfiles) {
+      AppState.teamProfiles = [];
+      changed = true;
+    }
     AppState.teamProfiles.forEach(profile => {
-      if (typeof profile.skills !== "string") profile.skills = "";
-      if (!Number.isFinite(Number(profile.capacityHours))) profile.capacityHours = 30;
-      if (!Number.isFinite(Number(profile.currentWorkloadHours))) profile.currentWorkloadHours = 0;
+      if (typeof profile.skills !== "string") { profile.skills = ""; changed = true; }
+      if (typeof profile.experience !== "string") { profile.experience = String(profile.experience || ""); changed = true; }
+      if (typeof profile.role !== "string") { profile.role = ""; changed = true; }
     });
-    StorageManager.saveState(AppState);
+    if (changed) StorageManager.saveState(AppState);
   },
 
   render() {
     this.ensureProfiles();
+    this.renderMembers();
+  },
+
+  renderMembers() {
+    const grid = document.getElementById("teamMembersGrid");
+    if (!grid) return;
+    grid.innerHTML = AppState.teamProfiles.length ? AppState.teamProfiles.map((profile, index) => {
+      const assigned = AppState.tasks.filter(task => task.assignee === profile.name || (task.collaborators || []).includes(profile.name));
+      const skills = profile.skills.split(/[,;]+/).map(skill => skill.trim()).filter(Boolean);
+      return `<article class="card team-member-card">
+        <div class="team-member-card-heading"><div><h3>${this.escape(profile.name)}</h3><p>${this.escape(profile.role || profile.experience || "Role not specified")}</p></div><span class="badge badge-neutral">${assigned.length} assigned</span></div>
+        <dl class="team-member-details"><div><dt>Skills</dt><dd>${skills.length ? skills.map(skill => `<span class="team-skill-tag">${this.escape(skill)}</span>`).join("") : "No skills confirmed"}</dd></div><div><dt>Experience</dt><dd>${this.escape(profile.experience || "Not specified")}</dd></div><div><dt>Weekly capacity</dt><dd>${Number.isFinite(Number(profile.capacityHours)) && Number(profile.capacityHours) > 0 ? `${Number(profile.capacityHours)} hours` : "Not set"}</dd></div><div><dt>Current committed workload</dt><dd>${Number.isFinite(Number(profile.currentWorkloadHours)) && Number(profile.currentWorkloadHours) >= 0 ? `${Number(profile.currentWorkloadHours)} hours` : "Not set"}</dd></div></dl>
+        <div class="team-member-actions"><button class="btn btn-secondary btn-sm" onclick="TeamManagementController.editMember(${index})">Edit</button><button class="btn btn-ghost btn-sm" onclick="TeamManagementController.removeMember(${index})">Remove</button></div>
+      </article>`;
+    }).join("") : '<div class="command-empty">No team members are saved. Add a member to begin planning.</div>';
+  },
+
+  addMember() {
+    this.editingIndex = null;
+    document.getElementById("teamMemberEditorTitle").textContent = "Add team member";
+    ["teamMemberName", "teamMemberRole", "teamMemberSkills", "teamMemberExperience"].forEach(id => { document.getElementById(id).value = ""; });
+    document.getElementById("teamMemberCapacity").value = "";
+    document.getElementById("teamMemberWorkload").value = "";
+    document.getElementById("teamMemberEditor").hidden = false;
+    document.getElementById("teamMemberName").focus();
+  },
+
+  editMember(index) {
+    const profile = AppState.teamProfiles[index];
+    if (!profile) return;
+    this.editingIndex = index;
+    document.getElementById("teamMemberEditorTitle").textContent = `Edit ${profile.name}`;
+    document.getElementById("teamMemberName").value = profile.name;
+    document.getElementById("teamMemberRole").value = profile.role || "";
+    document.getElementById("teamMemberSkills").value = profile.skills || "";
+    document.getElementById("teamMemberExperience").value = profile.experience || "";
+    document.getElementById("teamMemberCapacity").value = profile.capacityHours;
+    document.getElementById("teamMemberWorkload").value = profile.currentWorkloadHours ?? "";
+    document.getElementById("teamMemberEditor").hidden = false;
+    document.getElementById("teamMemberName").focus();
+  },
+
+  cancelEdit() {
+    this.editingIndex = null;
+    document.getElementById("teamMemberEditor").hidden = true;
+  },
+
+  saveMember() {
+    const name = document.getElementById("teamMemberName").value.trim();
+    const capacityValue = document.getElementById("teamMemberCapacity").value.trim();
+    const workloadValue = document.getElementById("teamMemberWorkload").value.trim();
+    const capacityHours = Number(capacityValue);
+    const currentWorkloadHours = Number(workloadValue);
+    if (!name) return Toast.warning("Member name is required.");
+    if (AppState.teamProfiles.some((profile, index) => index !== this.editingIndex && profile.name.toLowerCase() === name.toLowerCase())) return Toast.warning("A member with this name already exists.");
+    if (!capacityValue || !Number.isFinite(capacityHours) || capacityHours < 1 || capacityHours > 80) return Toast.warning("Weekly capacity must be between 1 and 80 hours.");
+    if (!workloadValue || !Number.isFinite(currentWorkloadHours) || currentWorkloadHours < 0 || currentWorkloadHours > 500) return Toast.warning("Enter the current workload, using 0 if there are no committed hours.");
+    const profile = {
+      ...(this.editingIndex === null ? {} : AppState.teamProfiles[this.editingIndex]),
+      name, role: document.getElementById("teamMemberRole").value.trim(),
+      skills: document.getElementById("teamMemberSkills").value.trim(),
+      experience: document.getElementById("teamMemberExperience").value.trim(),
+      capacityHours, currentWorkloadHours
+    };
+    if (this.editingIndex === null) AppState.teamProfiles.push(profile);
+    else {
+      const previousName = AppState.teamProfiles[this.editingIndex].name;
+      if (previousName !== name) {
+        AppState.tasks.forEach(task => {
+          if (task.assignee === previousName) task.assignee = name;
+          if (Array.isArray(task.collaborators)) task.collaborators = task.collaborators.map(member => member === previousName ? name : member);
+        });
+      }
+      AppState.teamProfiles[this.editingIndex] = profile;
+    }
+    StorageManager.saveState(AppState);
+    this.cancelEdit();
+    this.renderMembers();
+    OverviewController.render();
+    Toast.success(`Saved team profile for ${name}.`);
+  },
+
+  removeMember(index) {
+    const profile = AppState.teamProfiles[index];
+    if (!profile) return;
+    const affected = AppState.tasks.filter(task => task.assignee === profile.name || (task.collaborators || []).includes(profile.name));
+    if (affected.length && !confirm(`${profile.name} is assigned to ${affected.length} task(s). Remove the profile and leave those tasks unassigned? Tasks will be preserved.`)) return;
+    if (affected.length) {
+      AppState.tasks.forEach(task => {
+        if (task.assignee === profile.name) task.assignee = "";
+        if (Array.isArray(task.collaborators)) task.collaborators = task.collaborators.filter(name => name !== profile.name);
+      });
+    }
+    AppState.teamProfiles.splice(index, 1);
+    StorageManager.saveState(AppState);
+    this.renderMembers();
+    OverviewController.render();
+    Toast.info(affected.length ? `Removed ${profile.name}; ${affected.length} saved task(s) are now unassigned.` : `Removed ${profile.name}.`);
+  }
+};
+
+// Local rules prototype. Keep this provider boundary isolated so a secured
+// server-side AI provider can replace createPlan() without changing approval.
+const PlannerController = {
+  draft: null,
+  selectedMemberNames: [],
+
+  escape(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[character]));
+  },
+
+  render() {
+    TeamManagementController.ensureProfiles();
     const dateInput = document.getElementById("plannerDueDate");
     if (dateInput) dateInput.min = this.today();
-    this.renderProfiles();
+    this.renderTeamSelection();
     if (this.draft) this.renderReview();
   },
 
-  renderProfiles() {
-    const container = document.getElementById("plannerProfiles");
+  memberWorkload(profile) {
+    const current = Number(profile.currentWorkloadHours);
+    const capacity = Number(profile.capacityHours);
+    if (!Number.isFinite(current) || current < 0 || !Number.isFinite(capacity) || capacity <= 0) return Infinity;
+    const assigned = AppState.tasks.filter(task => task.status !== "Done" && (task.assignee === profile.name || (task.collaborators || []).includes(profile.name)));
+    const estimated = assigned.reduce((sum, task) => {
+      const effort = Number(task.estimateHours) || (Number(task.points) > 0 ? Number(task.points) * 4 : 0);
+      return sum + effort / (1 + (task.collaborators || []).length);
+    }, 0);
+    return current + estimated;
+  },
+
+  profileEligibility(profile) {
+    const capacity = Number(profile.capacityHours);
+    const current = Number(profile.currentWorkloadHours);
+    if (!String(profile.name || "").trim()) return { eligible: false, reason: "Member name is missing." };
+    if (!String(profile.skills || "").trim()) return { eligible: false, reason: "Add confirmed skills in Team Management." };
+    if (!Number.isFinite(capacity) || capacity <= 0) return { eligible: false, reason: "Set weekly capacity in Team Management." };
+    if (!Number.isFinite(current) || current < 0) return { eligible: false, reason: "Set current committed workload in Team Management." };
+    const committed = this.memberWorkload(profile);
+    const remaining = capacity - committed;
+    const atCapacity = remaining <= 0;
+    return { eligible: true, capacity, committed, remaining: Math.max(0, remaining), atCapacity, reason: atCapacity ? "At capacity — review workload." : "" };
+  },
+
+  getEligibleProfiles() {
+    return (AppState.teamProfiles || []).filter(profile => this.profileEligibility(profile).eligible);
+  },
+
+  renderTeamSelection() {
+    const container = document.getElementById("plannerTeamSelection");
     if (!container) return;
-    container.innerHTML = AppState.teamProfiles.map((profile, index) => `
-      <div class="planner-profile-row">
-        <div class="planner-profile-top"><strong>${this.escape(profile.name || "Team member")}</strong><button class="btn btn-ghost btn-sm" aria-label="Remove ${this.escape(profile.name)}" onclick="PlannerController.removeProfile(${index})">Remove</button></div>
-        <label>Name<input class="form-input no-icon" value="${this.escape(profile.name)}" onchange="PlannerController.saveProfile(${index}, 'name', this.value)"></label>
-        <label>Skills and technical expertise<input class="form-input no-icon" value="${this.escape(profile.skills)}" placeholder="Enter confirmed skills, comma-separated" onchange="PlannerController.saveProfile(${index}, 'skills', this.value)"></label>
-        <div class="form-row">
-          <label>Experience level<input class="form-input no-icon" value="${this.escape(profile.experience)}" placeholder="Enter experience level" onchange="PlannerController.saveProfile(${index}, 'experience', this.value)"></label>
-          <label>Capacity (hours/week)<input class="form-input no-icon" type="number" min="1" max="80" value="${Number(profile.capacityHours) || 30}" onchange="PlannerController.saveProfile(${index}, 'capacityHours', this.value)"></label>
-        </div>
-        <label>Current workload (committed hours)<input class="form-input no-icon" type="number" min="0" max="500" value="${Number(profile.currentWorkloadHours) || 0}" onchange="PlannerController.saveProfile(${index}, 'currentWorkloadHours', this.value)"></label>
-      </div>`).join("");
-  },
-
-  saveProfile(index, field, value) {
-    const profile = AppState.teamProfiles[index];
-    if (!profile) return;
-    if (field === "capacityHours" || field === "currentWorkloadHours") {
-      const parsed = Number(value);
-      if (!Number.isFinite(parsed) || parsed < (field === "capacityHours" ? 1 : 0)) {
-        Toast.warning("Enter a valid non-negative workload and a capacity above zero.");
-        this.renderProfiles();
-        return;
-      }
-      profile[field] = parsed;
-    } else {
-      profile[field] = String(value).trim();
+    const available = this.getEligibleProfiles();
+    const allProfiles = Array.isArray(AppState.teamProfiles) ? AppState.teamProfiles : [];
+    const known = allProfiles.filter(profile => profile.name && String(profile.skills || "").trim());
+    const allowedNames = new Set(available.map(profile => profile.name));
+    this.selectedMemberNames = this.selectedMemberNames.filter(name => allowedNames.has(name));
+    const requested = Number(document.getElementById("plannerTeamSize")?.value || 0);
+    if (requested > 0 && this.selectedMemberNames.length > requested) this.selectedMemberNames = this.selectedMemberNames.slice(0, requested);
+    const teamSizeInput = document.getElementById("plannerTeamSize");
+    if (teamSizeInput) {
+      if (available.length) teamSizeInput.max = String(available.length);
+      else teamSizeInput.removeAttribute("max");
     }
-    StorageManager.saveState(AppState);
-    OverviewController.renderWorkload();
-    if (field === "skills") Toast.info("Profile skills saved. Regenerate the draft to recalculate matches.");
+    container.innerHTML = !allProfiles.length
+      ? `<div class="command-empty">No team profiles are saved yet. <button class="btn btn-secondary btn-sm" onclick="Router.navigate('team-management')">Open Team Management</button></div>`
+      : allProfiles.map(profile => {
+      const eligibility = this.profileEligibility(profile);
+      const skills = String(profile.skills || "").trim();
+      const experience = profile.experience ? ` · ${this.escape(profile.experience)}` : "";
+      const role = profile.role ? `${this.escape(profile.role)} · ` : "";
+      const capacity = Number.isFinite(Number(profile.capacityHours)) && Number(profile.capacityHours) > 0 ? `${Number(profile.capacityHours)}h/week capacity` : "Capacity not set";
+      const workload = Number.isFinite(Number(profile.currentWorkloadHours)) && Number(profile.currentWorkloadHours) >= 0
+        ? `${Number(profile.currentWorkloadHours)}h committed${eligibility.eligible ? ` · ${eligibility.remaining}h available` : ""}`
+        : "Committed workload not set";
+      const memberClass = !eligibility.eligible ? "is-ineligible" : eligibility.atCapacity ? "is-at-capacity" : "";
+      return `<label class="planner-member-option ${memberClass}"><input type="checkbox" value="${this.escape(profile.name)}" ${this.selectedMemberNames.includes(profile.name) ? "checked" : ""} ${eligibility.eligible ? "" : "disabled"} onchange="PlannerController.setMemberSelected(this.value, this.checked)"><span><strong>${this.escape(profile.name || "Unnamed member")}</strong><small>${role}${skills ? this.escape(skills) : "No confirmed skills"}${experience}</small><small>${capacity} · ${workload}</small>${eligibility.reason ? `<small class="planner-ineligible-reason">${this.escape(eligibility.reason)}</small>` : ""}</span></label>`;
+    }).join("");
+    this.updateTeamSummary();
   },
 
-  addProfile() {
-    AppState.teamProfiles.push({ name: "", skills: "", experience: "", capacityHours: 30, currentWorkloadHours: 0 });
-    StorageManager.saveState(AppState);
-    OverviewController.renderWorkload();
-    this.renderProfiles();
-    const inputs = document.querySelectorAll("#plannerProfiles .planner-profile-row input");
-    if (inputs.length) inputs[inputs.length - 5].focus();
+  updateTeamSummary() {
+    const summary = document.getElementById("plannerSelectedTeamSummary");
+    if (!summary) return;
+    const requested = Number(document.getElementById("plannerTeamSize")?.value || 0);
+    summary.textContent = requested
+      ? `${this.selectedMemberNames.length} of ${requested} team member(s) selected.`
+      : `${this.selectedMemberNames.length} selected. Enter a team size to continue.`;
   },
 
-  removeProfile(index) {
-    if (AppState.teamProfiles.length <= 1) return Toast.warning("Keep at least one team profile.");
-    AppState.teamProfiles.splice(index, 1);
-    StorageManager.saveState(AppState);
-    OverviewController.renderWorkload();
-    this.renderProfiles();
+  onTeamSizeChange() {
+    this.renderTeamSelection();
+  },
+
+  setMemberSelected(name, selected) {
+    const profile = (AppState.teamProfiles || []).find(member => member.name === name);
+    const eligibility = profile ? this.profileEligibility(profile) : { eligible: false };
+    if (selected && !eligibility.eligible) {
+      Toast.warning("This member is no longer eligible. Review the profile in Team Management.");
+      this.renderTeamSelection();
+      return;
+    }
+    const requested = Number(document.getElementById("plannerTeamSize").value || 0);
+    if (selected && requested > 0 && this.selectedMemberNames.length >= requested) {
+      Toast.warning(`Select no more than ${requested} team member(s).`);
+      this.renderTeamSelection();
+      return;
+    }
+    this.selectedMemberNames = selected
+      ? [...new Set([...this.selectedMemberNames, name])]
+      : this.selectedMemberNames.filter(member => member !== name);
+    this.updateTeamSummary();
+    if (selected && eligibility.atCapacity) Toast.warning(`${name} is at capacity. Reduce workload or reassign tasks before committing new work.`);
+  },
+
+  autoSelectTeam() {
+    const requested = Number(document.getElementById("plannerTeamSize").value);
+    const eligible = this.getEligibleProfiles();
+    if (!Number.isInteger(requested) || requested < 1) return Toast.warning("Enter the number of team members needed first.");
+    if (requested > eligible.length) return Toast.warning(`Only ${eligible.length} saved member(s) have confirmed skills and configured capacity/workload. Update Team Management or reduce team size.`);
+    const brief = `${document.getElementById("plannerTitle").value} ${document.getElementById("plannerDescription").value} ${document.getElementById("plannerConstraints").value}`.toLowerCase();
+    const selected = [...eligible].sort((a, b) => {
+      const score = profile => {
+        const skills = String(profile.skills).split(/[,;]+/).map(skill => skill.trim().toLowerCase()).filter(Boolean);
+        const relevant = skills.filter(skill => skill.length > 2 && brief.includes(skill)).length;
+        const eligibility = this.profileEligibility(profile);
+        const experience = /senior|lead|expert/i.test(profile.experience || "") ? 2 : /mid|intermediate/i.test(profile.experience || "") ? 1 : 0;
+        return { hasCapacity: eligibility.atCapacity ? 0 : 1, relevant, remaining: eligibility.remaining, experience };
+      };
+      const first = score(a);
+      const second = score(b);
+      return second.hasCapacity - first.hasCapacity || second.relevant - first.relevant || second.remaining - first.remaining || second.experience - first.experience;
+    }).slice(0, requested).map(profile => profile.name);
+    this.selectedMemberNames = selected;
+    this.renderTeamSelection();
   },
 
   today() {
@@ -2508,22 +2687,27 @@ const PlannerController = {
     const title = document.getElementById("plannerTitle").value.trim();
     const description = document.getElementById("plannerDescription").value.trim();
     const dueDate = document.getElementById("plannerDueDate").value;
+    const teamSize = Number(document.getElementById("plannerTeamSize").value);
     if (!title || !description || !dueDate) return Toast.warning("Enter a title, detailed description, and desired completion date.");
     if (dueDate < this.today()) return Toast.warning("Desired completion must be today or a future date.");
     if (AppState.projects.some(project => project.title.toLowerCase() === title.toLowerCase())) return Toast.warning("A project with this title already exists. Choose a distinct title.");
-    this.ensureProfiles();
-    if (AppState.teamProfiles.some(profile => !profile.name.trim())) return Toast.warning("Every team profile needs a name before planning.");
+    if (!Number.isInteger(teamSize) || teamSize < 1) return Toast.warning("Enter a valid team size.");
+    const eligible = this.getEligibleProfiles();
+    if (!eligible.length) return Toast.warning("No saved profiles have confirmed skills and remaining capacity. Configure the team in Team Management first.");
+    if (teamSize > eligible.length) return Toast.warning(`Requested team size exceeds the ${eligible.length} profiles with confirmed skills and configured capacity/workload. Update Team Management or reduce the team size.`);
+    const selectedTeam = this.selectedMemberNames.map(name => eligible.find(profile => profile.name === name)).filter(Boolean);
+    if (selectedTeam.length !== teamSize) return Toast.warning(`Select exactly ${teamSize} eligible team member(s) before generating the plan.`);
     const input = {
       title, description, constraints: document.getElementById("plannerConstraints").value.trim(),
-      priority: document.getElementById("plannerPriority").value, dueDate
+      priority: document.getElementById("plannerPriority").value, dueDate, teamSize
     };
-    this.draft = { ...input, tasks: this.createPlan(input), createdAt: new Date().toISOString() };
+    this.draft = { ...input, selectedTeamNames: selectedTeam.map(profile => profile.name), tasks: this.createPlan(input, selectedTeam), createdAt: new Date().toISOString() };
     this.renderReview();
     document.getElementById("plannerReview").scrollIntoView({ behavior: "smooth", block: "start" });
   },
 
   // Templates intentionally produce deterministic, explainable work items.
-  createPlan(input) {
+  createPlan(input, selectedTeam) {
     const text = `${input.title} ${input.description} ${input.constraints}`.toLowerCase();
     const specs = [{
       milestone: "Discovery & design", title: "Confirm scope and solution design",
@@ -2557,15 +2741,14 @@ const PlannerController = {
     specs.push({ milestone: "Verification & delivery", title: "Integration, security, and acceptance testing", description: "Verify end-to-end behavior, access controls, error handling, and the agreed acceptance criteria.", acceptance: "Automated or documented checks cover critical workflows; high-impact defects are resolved or recorded.", skills: ["testing", "quality assurance", "security"], points: 5, depends: featureIndexes });
     specs.push({ milestone: "Verification & delivery", title: "Release readiness and handover", description: "Prepare deployment, operational notes, and a delivery handover for the project team.", acceptance: "Release steps, rollback or recovery notes, and user-facing handover are reviewed.", skills: ["deployment", "documentation"], points: 3, depends: [verificationIndex] });
 
-    const existingHours = profile => Number(profile.currentWorkloadHours || 0) + AppState.tasks
-      .filter(task => task.assignee === profile.name && task.status !== "Done")
-      .reduce((sum, task) => sum + (Number(task.points) || 0) * 4, 0);
-    const plannedHours = new Map(AppState.teamProfiles.map(profile => [profile.name, existingHours(profile)]));
+    const plannedHours = new Map(selectedTeam.map(profile => [profile.name, this.memberWorkload(profile)]));
     const tasks = specs.map((spec, index) => {
-      const matching = AppState.teamProfiles.map(profile => {
-        const skillText = profile.skills.toLowerCase();
-        const matched = spec.skills.filter(skill => skillText.includes(skill));
-        return { profile, matched, score: matched.length * 100 - (plannedHours.get(profile.name) / Math.max(1, Number(profile.capacityHours) * 2)) * 20 };
+      const matching = selectedTeam.map(profile => {
+        const declared = String(profile.skills || "").split(/[,;]+/).map(skill => skill.trim().toLowerCase()).filter(Boolean);
+        const matched = spec.skills.filter(skill => declared.some(value => value === skill || value.includes(skill) || skill.includes(value)));
+        const experience = /senior|lead|expert/i.test(profile.experience || "") ? 2 : /mid|intermediate/i.test(profile.experience || "") ? 1 : 0;
+        const remaining = Math.max(0, Number(profile.capacityHours) - plannedHours.get(profile.name));
+        return { profile, matched, score: matched.length * 100 + remaining / Math.max(1, Number(profile.capacityHours)) * 10 + experience };
       }).filter(candidate => candidate.matched.length).sort((a, b) => b.score - a.score);
       const selected = matching[0] || null;
       const owner = selected ? selected.profile.name : "";
@@ -2647,6 +2830,8 @@ const PlannerController = {
     this.draft.tasks.forEach(task => {
       if (!task.title.trim()) problems.push(`${task.id}: title is required.`);
       if (!task.assignee) problems.push(`${task.id}: choose an owner before approval.`);
+      if (task.assignee && !this.draft.selectedTeamNames.includes(task.assignee)) problems.push(`${task.id}: owner must belong to the selected team.`);
+      if (task.assignee && !AppState.teamProfiles.some(profile => profile.name === task.assignee)) problems.push(`${task.id}: assigned member no longer has a saved profile.`);
       if (task.dueDate > this.draft.dueDate) problems.push(`${task.id}: scheduled due date exceeds the desired completion date.`);
       if (task.startDate > task.dueDate) problems.push(`${task.id}: start date is after its due date.`);
       if (task.dependsOn.some(id => !ids.has(id) || id === task.id)) problems.push(`${task.id}: dependency is missing or self-referential.`);
@@ -2679,18 +2864,39 @@ const PlannerController = {
     return [...new Set(problems)];
   },
 
+  capacityWarnings() {
+    return this.draft.selectedTeamNames.flatMap(name => {
+      const profile = AppState.teamProfiles.find(member => member.name === name);
+      if (!profile) return [];
+      const proposedTasks = this.draft.tasks.filter(task => task.assignee === name);
+      if (!proposedTasks.length) return [];
+      const baseHours = this.memberWorkload(profile);
+      const proposedHours = proposedTasks.reduce((sum, task) => sum + (Number(task.points) || 0) * 4 / (1 + (task.collaborators || []).length), 0);
+      const weeklyCapacity = Number(profile.capacityHours);
+      const projectedHours = baseHours + proposedHours;
+      if (baseHours >= weeklyCapacity) {
+        return [`${name} is already at capacity (${baseHours}h committed against ${weeklyCapacity}h/week). Proposed tasks are scheduled after existing commitments; review the due dates or reassign work.`];
+      }
+      if (projectedHours > weeklyCapacity) {
+        return [`${name}'s current commitments plus proposed work total about ${projectedHours}h against ${weeklyCapacity}h/week. Review the schedule and consider reassigning work.`];
+      }
+      return [];
+    });
+  },
+
   renderReview() {
     const container = document.getElementById("plannerReview");
     if (!container || !this.draft) return;
-    const profiles = AppState.teamProfiles;
+    const profiles = AppState.teamProfiles.filter(profile => this.draft.selectedTeamNames.includes(profile.name));
     const profileOptions = (selected, allowEmpty = true) => `${allowEmpty ? '<option value="">Unassigned</option>' : ""}${profiles.map(profile => `<option value="${this.escape(profile.name)}" ${profile.name === selected ? "selected" : ""}>${this.escape(profile.name)}</option>`).join("")}`;
     const distribution = profiles.map(profile => {
       const assigned = this.draft.tasks.filter(task => task.assignee === profile.name);
       const points = assigned.reduce((sum, task) => sum + Number(task.points || 0), 0);
-      const workload = Number(profile.currentWorkloadHours || 0) + points * 4;
-      return `<div class="planner-load-row"><span>${this.escape(profile.name)}</span><span>${assigned.length} tasks · ${points} pts</span><span>${workload}h committed / ${Number(profile.capacityHours)}h weekly capacity</span></div>`;
+      const workload = this.memberWorkload(profile) + assigned.reduce((sum, task) => sum + Number(task.points || 0) * 4 / (1 + (task.collaborators || []).length), 0);
+      return `<div class="planner-load-row"><span>${this.escape(profile.name)}</span><span>${assigned.length} tasks · ${points} pts</span><span>${workload}h forecast / ${Number(profile.capacityHours)}h weekly capacity</span></div>`;
     }).join("");
     const problems = this.findings();
+    const capacityWarnings = this.capacityWarnings();
     const tasks = this.draft.tasks.map((task, index) => `
       <article class="planner-task">
         <div class="planner-task-heading"><span class="badge badge-secondary">${this.escape(task.id)} · ${this.escape(task.milestone)}</span><button class="btn btn-ghost btn-sm" onclick="PlannerController.removeTask(${index})">Remove</button></div>
@@ -2711,8 +2917,9 @@ const PlannerController = {
         ${task.subtasks?.length ? `<div class="planner-subtasks"><strong>Subtasks</strong><ul>${task.subtasks.map(subtask => `<li>${this.escape(subtask)}</li>`).join("")}</ul></div>` : ""}
       </article>`).join("");
     container.innerHTML = `
-      <div class="planner-review-heading"><div><h3>Review proposed plan</h3><p>${this.escape(this.draft.title)} · completion target ${this.escape(this.draft.dueDate)} · ${this.draft.tasks.length} tasks</p></div><div class="planner-review-actions"><button class="btn btn-secondary btn-sm" onclick="PlannerController.generate()">Regenerate</button><button class="btn btn-primary btn-sm" onclick="PlannerController.approve()">Approve plan</button></div></div>
+      <div class="planner-review-heading"><div><h3>Review proposed plan</h3><p>${this.escape(this.draft.title)} · ${this.draft.selectedTeamNames.length} selected: ${this.escape(this.draft.selectedTeamNames.join(", "))} · completion target ${this.escape(this.draft.dueDate)} · ${this.draft.tasks.length} tasks</p></div><div class="planner-review-actions"><button class="btn btn-secondary btn-sm" onclick="PlannerController.generate()">Regenerate</button><button class="btn btn-primary btn-sm" onclick="PlannerController.approve()">Approve plan</button></div></div>
       <div class="planner-review-meta"><strong>Milestones:</strong> ${[...new Set(this.draft.tasks.map(task => task.milestone))].map(this.escape).join(" · ") || "None"}</div>
+      ${capacityWarnings.length ? `<div class="planner-capacity-warning"><strong>Capacity review</strong><ul>${capacityWarnings.map(warning => `<li>${this.escape(warning)}</li>`).join("")}</ul></div>` : ""}
       ${problems.length ? `<div class="planner-conflicts"><strong>Resolve before approval</strong><ul>${problems.map(problem => `<li>${this.escape(problem)}</li>`).join("")}</ul></div>` : `<div class="planner-ready">No schedule or dependency conflicts detected.</div>`}
       <section class="planner-load"><h4>Workload distribution</h4>${distribution}</section>
       <div class="planner-task-list">${tasks || '<p class="planner-empty">No tasks in this draft. Add a task to continue.</p>'}</div>
@@ -2730,7 +2937,7 @@ const PlannerController = {
     const savedTaskIds = new Map(this.draft.tasks.map((task, index) => [task.id, `TSK-${nextTaskNumber + index}`]));
     const sprintName = `${sprintId} - ${this.draft.title}`;
     const points = this.draft.tasks.reduce((sum, task) => sum + Number(task.points), 0);
-    const members = [...new Set(this.draft.tasks.flatMap(task => [task.assignee, ...task.collaborators]).filter(Boolean))];
+    const members = [...new Set([...this.draft.selectedTeamNames, ...this.draft.tasks.flatMap(task => [task.assignee, ...task.collaborators]).filter(Boolean)])];
     const project = {
       id: projectId, title: this.draft.title, name: this.draft.title,
       desc: this.draft.description, description: this.draft.description,
