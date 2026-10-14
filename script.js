@@ -405,6 +405,7 @@ const Router = {
         "projects": "Projects",
         "sprints": "Sprints",
         "tasks": "Sprint Tasks",
+        "ai-planner": "AI Project Planner",
         "ai-insights": "AI Insights & Recommendations",
         "settings": "System Settings"
       };
@@ -422,6 +423,7 @@ const Router = {
     if (viewName === "projects") ProjectsController.render();
     if (viewName === "sprints") SprintsController.render();
     if (viewName === "tasks") TasksController.render();
+    if (viewName === "ai-planner") PlannerController.render();
     if (viewName === "ai-insights") AIInsightsController.render();
   },
 
@@ -486,298 +488,145 @@ const AuthController = {
 };
 
 // ============================================================================
-// 6. Overview Controller & Canvas Chart
+// 6. Overview Controller
 // ============================================================================
 const OverviewController = {
-  chartMode: "burndown", // 'burndown' | 'velocity'
-
   render() {
     this.updateStats();
-    this.renderChart();
-    this.renderRecentTasks();
+    this.renderSprint();
+    this.renderAttention();
     this.renderWorkload();
   },
 
   updateStats() {
-    const tasks = AppState.tasks;
-    const totalIssues = tasks.length;
-    const inProgress = tasks.filter(t => t.status === "In Progress" || t.status === "In Review").length;
-    const done = tasks.filter(t => t.status === "Done").length;
-    const todo = tasks.filter(t => t.status === "To Do").length;
-
-    // Calculate burned story points
-    const burnedPts = tasks.filter(t => t.status === "Done").reduce((sum, t) => sum + Number(t.points), 0);
-    const totalPts = tasks.reduce((sum, t) => sum + Number(t.points), 0);
-    const completionPct = totalPts > 0 ? Math.round((burnedPts / totalPts) * 100) : 0;
-
-    // Update DOM counts
-    const elTotalIssues = document.getElementById("statTotalIssues");
-    if (elTotalIssues) elTotalIssues.textContent = totalIssues;
-
-    const elVelocity = document.getElementById("statVelocityPts");
-    if (elVelocity) elVelocity.textContent = `${burnedPts} pts`;
-
-    const elOverviewPct = document.getElementById("overviewSprintPct");
-    if (elOverviewPct) elOverviewPct.textContent = `${completionPct}%`;
-
-    const elOverviewBar = document.getElementById("overviewSprintProgressBar");
-    if (elOverviewBar) elOverviewBar.style.width = `${completionPct}%`;
-
-    const elBurned = document.getElementById("overviewPointsBurned");
-    if (elBurned) elBurned.textContent = `${burnedPts} / ${totalPts} pts`;
-
-    // Mini boxes
-    const cTodo = document.getElementById("overviewCountTodo");
-    if (cTodo) cTodo.textContent = todo;
-    const cInProg = document.getElementById("overviewCountInProgress");
-    if (cInProg) cInProg.textContent = inProgress;
-    const cDone = document.getElementById("overviewCountDone");
-    if (cDone) cDone.textContent = done;
-
-    // Nav counters
+    const tasks = Array.isArray(AppState.tasks) ? AppState.tasks : [];
+    const done = tasks.filter(task => task.status === "Done").length;
+    const inProgress = tasks.filter(task => task.status === "In Progress").length;
+    const todo = tasks.filter(task => task.status === "To Do").length;
+    const datedTasks = tasks.filter(task => this.getTaskDate(task));
+    const overdue = datedTasks.filter(task => task.status !== "Done" && this.getTaskDate(task) < this.today()).length;
+    const values = {
+      overviewTotalTasks: tasks.length,
+      overviewCompletedTasks: done,
+      overviewInProgressTasks: inProgress,
+      overviewTodoTasks: todo,
+      overviewTeamCount: this.getTeamNames().length,
+      overviewOverdueCount: overdue
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    });
+    const overdueCard = document.getElementById("overviewOverdueCard");
+    if (overdueCard) overdueCard.hidden = datedTasks.length === 0;
     const navTasks = document.getElementById("navTaskCount");
-    if (navTasks) navTasks.textContent = totalIssues;
+    if (navTasks) navTasks.textContent = tasks.length;
     const navProjects = document.getElementById("navProjectCount");
     if (navProjects) navProjects.textContent = AppState.projects.length;
   },
 
-  setChartMode(mode) {
-    this.chartMode = mode;
-    const tabBurn = document.getElementById("chartTabBurndown");
-    const tabVelo = document.getElementById("chartTabVelocity");
-    const lblPrim = document.getElementById("legendLabelPrimary");
-    const lblSec = document.getElementById("legendLabelSecondary");
-
-    if (mode === "burndown") {
-      tabBurn.classList.add("active");
-      tabVelo.classList.remove("active");
-      lblPrim.textContent = "Actual Remaining (pts)";
-      lblSec.textContent = "Ideal Guideline";
-    } else {
-      tabVelo.classList.add("active");
-      tabBurn.classList.remove("active");
-      lblPrim.textContent = "Points Completed";
-      lblSec.textContent = "Sprint Commitment";
-    }
-    this.renderChart();
+  today() {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
   },
 
-  renderChart() {
-    const canvas = document.getElementById("productivityCanvas");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-
-    // Handle high DPI displays
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = 240 * dpr;
-    ctx.scale(dpr, dpr);
-
-    const w = rect.width;
-    const h = 240;
-    const padX = 45;
-    const padY = 30;
-    const graphW = w - padX * 2;
-    const graphH = h - padY * 2;
-
-    ctx.clearRect(0, 0, w, h);
-
-    if (this.chartMode === "burndown") {
-      // Data: 10 days of sprint burndown
-      const days = ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D14"];
-      const ideal = [52, 47, 42, 36, 31, 26, 21, 16, 10, 5, 0];
-      const actual = [52, 50, 44, 38, 33, 29, 24, 20, 16]; // currently on day 9
-
-      // Draw Grid
-      ctx.strokeStyle = "#242E40";
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i++) {
-        const y = padY + (graphH / 4) * i;
-        ctx.beginPath();
-        ctx.moveTo(padX, y);
-        ctx.lineTo(padX + graphW, y);
-        ctx.stroke();
-
-        ctx.fillStyle = "#6F7D94";
-        ctx.font = "10px Inter, sans-serif";
-        ctx.textAlign = "right";
-        const val = Math.round(52 - (52 / 4) * i);
-        ctx.fillText(val + "p", padX - 8, y + 3);
-      }
-
-      // X-Axis labels
-      ctx.textAlign = "center";
-      days.forEach((day, idx) => {
-        const x = padX + (graphW / (days.length - 1)) * idx;
-        ctx.fillText(day, x, h - 10);
-      });
-
-      // Ideal Line (dashed)
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = "#6F7D94";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ideal.forEach((pt, idx) => {
-        const x = padX + (graphW / (days.length - 1)) * idx;
-        const y = padY + graphH - (pt / 52) * graphH;
-        if (idx === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Actual Burndown Line (with blue gradient stroke & fill)
-      ctx.strokeStyle = "#648CFF";
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      actual.forEach((pt, idx) => {
-        const x = padX + (graphW / (days.length - 1)) * idx;
-        const y = padY + graphH - (pt / 52) * graphH;
-        if (idx === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-
-      // Points dots
-      actual.forEach((pt, idx) => {
-        const x = padX + (graphW / (days.length - 1)) * idx;
-        const y = padY + graphH - (pt / 52) * graphH;
-        ctx.fillStyle = "#171F2E";
-        ctx.beginPath();
-        ctx.arc(x, y, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#648CFF";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      });
-
-    } else {
-      // Velocity Bar Chart across Sprints
-      const sprints = ["Sprint 38", "Sprint 39", "Sprint 40", "Sprint 41", "Sprint 42 (Now)"];
-      const committed = [44, 46, 50, 50, 52];
-      const completed = [42, 48, 47, 50, 38];
-
-      ctx.strokeStyle = "#242E40";
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i++) {
-        const y = padY + (graphH / 4) * i;
-        ctx.beginPath();
-        ctx.moveTo(padX, y);
-        ctx.lineTo(padX + graphW, y);
-        ctx.stroke();
-
-        ctx.fillStyle = "#6F7D94";
-        ctx.font = "10px Inter, sans-serif";
-        ctx.textAlign = "right";
-        const val = Math.round(60 - (60 / 4) * i);
-        ctx.fillText(val + "p", padX - 8, y + 3);
-      }
-
-      const barSlot = graphW / sprints.length;
-      const barW = Math.min(28, barSlot * 0.35);
-
-      sprints.forEach((spr, idx) => {
-        const centerX = padX + barSlot * idx + barSlot / 2;
-
-        // Committed bar (muted)
-        const comH = (committed[idx] / 60) * graphH;
-        ctx.fillStyle = "#242E40";
-        ctx.fillRect(centerX - barW - 2, padY + graphH - comH, barW, comH);
-
-        // Completed bar (accent)
-        const compH = (completed[idx] / 60) * graphH;
-        const grad = ctx.createLinearGradient(0, padY + graphH - compH, 0, padY + graphH);
-        grad.addColorStop(0, "#648CFF");
-        grad.addColorStop(1, "#9B8AFF");
-        ctx.fillStyle = grad;
-        ctx.fillRect(centerX + 2, padY + graphH - compH, barW, compH);
-
-        // Label
-        ctx.fillStyle = "#A0A9BB";
-        ctx.font = "11px Inter, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(spr, centerX, h - 8);
-      });
-    }
+  getTaskDate(task) {
+    const value = String(task.dueDate || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
   },
 
-  renderRecentTasks() {
-    const tbody = document.getElementById("overviewTasksTbody");
-    if (!tbody) return;
+  getTeamNames() {
+    const knownMembers = ["Kishore", "Mohan", "Anju", "Anika", "Anish"];
+    const profiles = Array.isArray(AppState.teamProfiles) ? AppState.teamProfiles.map(profile => profile.name) : [];
+    const assignees = (AppState.tasks || []).flatMap(task => [task.assignee, ...(task.collaborators || [])]);
+    return [...new Set([...knownMembers, ...profiles, ...assignees].map(name => String(name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  },
 
-    // Show top 5 tasks
-    const recent = AppState.tasks.slice(0, 5);
-    tbody.innerHTML = recent.map(t => {
-      let priBadge = "badge-neutral";
-      if (t.priority === "Urgent") priBadge = "badge-error";
-      if (t.priority === "High") priBadge = "badge-warning";
-      if (t.priority === "Medium") priBadge = "badge-primary";
+  getActiveSprint() {
+    return (AppState.sprints || []).find(sprint => String(sprint.status || "").toLowerCase() === "active") || null;
+  },
 
-      let statBadge = "badge-neutral";
-      if (t.status === "Done") statBadge = "badge-success";
-      if (t.status === "In Progress") statBadge = "badge-primary";
-      if (t.status === "In Review") statBadge = "badge-secondary";
+  getSprintTasks(sprint) {
+    if (!sprint) return [];
+    const keys = new Set([sprint.id, sprint.name].filter(Boolean).map(value => SprintIQWorkflow.sprintKey(value).toLowerCase()));
+    return (AppState.tasks || []).filter(task => {
+      const taskKey = SprintIQWorkflow.sprintKey(task.sprint || task.sprintId || "").toLowerCase();
+      return keys.has(taskKey);
+    });
+  },
 
-      return `
-        <tr>
-          <td>
-            <div class="task-cell-title">
-              <span class="task-id-tag">${t.id}</span>
-              <span>${t.title}</span>
-            </div>
-          </td>
-          <td><span class="badge ${priBadge}">${t.priority}</span></td>
-          <td>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="member-avatar">${t.assignee.split(" ").map(n => n[0]).join("")}</span>
-              <span style="font-size: 12px; color: var(--text-secondary);">${t.assignee}</span>
-            </div>
-          </td>
-          <td><span class="badge ${statBadge}">${t.status}</span></td>
-          <td><span style="font-weight: 600; color: var(--text-primary);">${t.points} pts</span></td>
-        </tr>
-      `;
-    }).join("");
+  formatDate(value) {
+    const date = this.getTaskDate({ dueDate: value });
+    return date ? date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+  },
+
+  escape(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+  },
+
+  renderSprint() {
+    const panel = document.getElementById("overviewSprintPanel");
+    if (!panel) return;
+    const sprint = this.getActiveSprint();
+    if (!sprint) {
+      panel.innerHTML = '<div class="command-empty">There is no active sprint in the current workspace.</div>';
+      return;
+    }
+    const tasks = this.getSprintTasks(sprint);
+    const counts = {
+      todo: tasks.filter(task => task.status === "To Do").length,
+      progress: tasks.filter(task => task.status === "In Progress").length,
+      done: tasks.filter(task => task.status === "Done").length
+    };
+    const completion = tasks.length ? Math.round(counts.done / tasks.length * 100) : 0;
+    const dates = [sprint.startDate && this.formatDate(sprint.startDate), sprint.endDate && this.formatDate(sprint.endDate)].filter(Boolean);
+    panel.innerHTML = `
+      <div class="sprint-command-title"><strong>${this.escape(sprint.name || sprint.id || "Active sprint")}</strong><span class="badge badge-success">${this.escape(sprint.status || "Active")}</span></div>
+      <div class="sprint-command-meta">${dates.length ? dates.join(" – ") : "Sprint dates not set"}</div>
+      ${tasks.length ? `
+        <div class="sprint-command-progress-label"><span>Task completion</span><strong>${counts.done} of ${tasks.length} · ${completion}%</strong></div>
+        <div class="progress-container" role="progressbar" aria-label="Sprint task completion" aria-valuenow="${completion}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" style="width:${completion}%"></div></div>
+        <div class="sprint-command-counts">
+          <div><strong>${counts.todo}</strong><span>To Do</span></div><div><strong>${counts.progress}</strong><span>In Progress</span></div><div><strong>${counts.done}</strong><span>Done</span></div>
+        </div>` : '<div class="command-empty">No tasks are assigned to this sprint yet.</div>'}`;
+  },
+
+  renderAttention() {
+    const container = document.getElementById("overviewAttentionList");
+    if (!container) return;
+    const now = this.today();
+    const soon = new Date(now);
+    soon.setDate(soon.getDate() + 3);
+    const open = (AppState.tasks || []).filter(task => task.status !== "Done");
+    const sprintTasks = this.getSprintTasks(this.getActiveSprint()).filter(task => task.status !== "Done");
+    const groups = [
+      { label: "Overdue", tasks: open.filter(task => { const due = this.getTaskDate(task); return due && due < now; }) },
+      { label: "Due in the next 3 days", tasks: open.filter(task => { const due = this.getTaskDate(task); return due && due >= now && due <= soon; }) },
+      { label: "Unassigned", tasks: open.filter(task => !String(task.assignee || "").trim()) },
+      { label: "Blocked", tasks: open.filter(task => task.status === "Blocked" || task.blocked === true) }
+    ].filter(group => group.tasks.length);
+    container.innerHTML = groups.length ? groups.map(group => {
+      const first = group.tasks[0];
+      const detail = `${first.title || first.id}${group.tasks.length > 1 ? ` · +${group.tasks.length - 1} more` : ""}`;
+      const due = this.getTaskDate(first) ? ` · Due ${this.formatDate(first.dueDate)}` : "";
+      return `<div class="attention-item"><div class="attention-mark"></div><div class="attention-copy"><div class="attention-title"><strong>${this.escape(group.label)}</strong><span>${group.tasks.length}</span></div><p>${this.escape(detail + due)}</p></div><button class="btn btn-ghost btn-sm" onclick="SearchModal.selectTask(decodeURIComponent('${encodeURIComponent(first.id)}'))">View</button></div>`;
+    }).join("") : '<div class="command-empty">No immediate attention needed.</div>';
   },
 
   renderWorkload() {
-    const container = document.getElementById("overviewWorkloadList");
+    const container = document.getElementById("overviewTeamList");
     if (!container) return;
-
-    const teamMembers = ["Kishore", "Mohan", "Anju", "Anika", "Anish"];
-
-    container.innerHTML = teamMembers.map(name => {
-      const assignedTasks = AppState.tasks.filter(t => t.assignee === name);
-      const completedTasks = assignedTasks.filter(t => t.status === "Done");
-      const totalPoints = assignedTasks.reduce((sum, task) => sum + Number(task.points || 0), 0);
-      const completedPoints = completedTasks.reduce((sum, task) => sum + Number(task.points || 0), 0);
-      const pct = totalPoints > 0 ? Math.min(100, Math.round((completedPoints / totalPoints) * 100)) : 0;
-      const initials = name.split(" ").map(part => part[0]).join("").slice(0, 2);
-
-      let color = "var(--accent-primary)";
-      if (pct >= 100) color = "var(--success)";
-      else if (pct >= 70) color = "var(--warning)";
-      else if (pct <= 0) color = "var(--border)";
-
-      return `
-        <div class="workload-item">
-          <div class="workload-info">
-            <div class="workload-user">
-              <span class="member-avatar">${initials}</span>
-              <div>
-                <div>${name}</div>
-                <div style="font-size: 10px; color: var(--text-muted);">${assignedTasks.length} task${assignedTasks.length === 1 ? "" : "s"} assigned</div>
-              </div>
-            </div>
-            <div class="workload-stat">${assignedTasks.length} tasks • ${completedTasks.length} done • ${pct}%</div>
-          </div>
-          <div class="progress-container">
-            <div class="progress-bar" style="width: ${pct}%; background: ${color};"></div>
-          </div>
-        </div>
-      `;
-    }).join("");
+    const names = this.getTeamNames();
+    const tasks = Array.isArray(AppState.tasks) ? AppState.tasks : [];
+    container.innerHTML = names.length ? names.map(name => {
+      const assigned = tasks.filter(task => task.assignee === name || (task.collaborators || []).includes(name));
+      const open = assigned.filter(task => task.status !== "Done").length;
+      const initials = name.split(/\s+/).map(part => part[0]).join("").slice(0, 2);
+      return `<div class="command-team-row"><span class="member-avatar">${this.escape(initials)}</span><strong>${this.escape(name)}</strong><span>${assigned.length} assigned</span></div>`;
+    }).join("") : '<div class="command-empty">No team profiles or task assignments are available yet.</div>';
   }
 };
 
@@ -924,6 +773,7 @@ const TasksController = {
   filterStatus: "all",
 
   render() {
+    this.syncAssigneeOptions();
     const filtered = this.getFilteredTasks();
 
     if (this.viewMode === "kanban") {
@@ -935,6 +785,19 @@ const TasksController = {
       document.getElementById("tasksListView").style.display = "block";
       this.renderList(filtered);
     }
+  },
+
+  syncAssigneeOptions() {
+    const select = document.getElementById("taskAssigneeFilter");
+    if (!select) return;
+    const selected = this.filterAssignee !== "all" ? this.filterAssignee : select.value;
+    const names = [...new Set([
+      ...(AppState.teamProfiles || []).map(profile => profile.name),
+      ...AppState.tasks.flatMap(task => [task.assignee, ...(task.collaborators || [])])
+    ].filter(Boolean))].sort();
+    select.innerHTML = `<option value="all">All Assignees</option>${names.map(name => `<option value="${SprintIQWorkflow.escape(name)}">${SprintIQWorkflow.escape(name)}</option>`).join("")}`;
+    select.value = names.includes(selected) ? selected : "all";
+    this.filterAssignee = select.value;
   },
 
   setViewMode(mode) {
@@ -960,7 +823,7 @@ const TasksController = {
         t.project.toLowerCase().includes(this.searchQuery.toLowerCase());
 
       const matchPriority = this.filterPriority === "all" || t.priority === this.filterPriority;
-      const matchAssignee = this.filterAssignee === "all" || t.assignee === this.filterAssignee;
+      const matchAssignee = this.filterAssignee === "all" || t.assignee === this.filterAssignee || (t.collaborators || []).includes(this.filterAssignee);
       const matchStatus = this.filterStatus === "all" || t.status === this.filterStatus;
 
       return matchSearch && matchPriority && matchAssignee && matchStatus;
@@ -1966,13 +1829,6 @@ const App = {
     OverviewController.render();
     Notifications.render();
 
-    // Resize listener for Canvas chart responsiveness
-    window.addEventListener("resize", () => {
-      if (Router.currentView === "overview") {
-        OverviewController.renderChart();
-      }
-    });
-
     // Keyboard Shortcuts: Ctrl+K for search, Escape for modal close
     window.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -2113,6 +1969,17 @@ const SprintIQWorkflow = {
         ? selected
         : "Backlog";
     }
+
+    const assigneeSelect = document.getElementById("taskFormAssignee");
+    if (assigneeSelect) {
+      const selected = assigneeSelect.value;
+      const names = [...new Set([
+        ...(AppState.teamProfiles || []).map(profile => profile.name),
+        ...AppState.tasks.flatMap(task => [task.assignee, ...(task.collaborators || [])])
+      ].filter(Boolean))];
+      assigneeSelect.innerHTML = names.map(name => `<option value="${this.escape(name)}">${this.escape(name)}</option>`).join("");
+      if (names.includes(selected)) assigneeSelect.value = selected;
+    }
   },
 
   refreshSprintProgress() {
@@ -2134,6 +2001,12 @@ const SprintIQWorkflow = {
           (sum, task) => sum + (Number(task.points) || 0),
           0
         );
+    });
+    AppState.projects.filter(project => project.plannerGenerated).forEach(project => {
+      const projectTasks = AppState.tasks.filter(task => task.project === project.title);
+      project.pointsTotal = projectTasks.reduce((sum, task) => sum + (Number(task.points) || 0), 0);
+      project.pointsDone = projectTasks.filter(task => task.status === "Done").reduce((sum, task) => sum + (Number(task.points) || 0), 0);
+      project.progress = project.pointsTotal ? Math.round(project.pointsDone / project.pointsTotal * 100) : 0;
     });
   }
 };
@@ -2402,6 +2275,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  try {
+    if (localStorage.getItem(StorageManager.KEY)) return;
+  } catch (error) {
+    console.warn("Could not inspect saved workspace before seeding:", error);
+  }
+
   const teamMembers = [
     "Kishore",
     "Mohan",
@@ -2504,3 +2383,402 @@ document.addEventListener("DOMContentLoaded", () => {
 
   console.log("SprintIQ team project data initialized.");
 })();
+
+// Local rules prototype. Keep this provider boundary isolated so a secured
+// server-side AI provider can replace createPlan() without changing approval.
+const PlannerController = {
+  draft: null,
+  defaultNames: ["Kishore", "Mohan", "Anju", "Anika", "Anish"],
+
+  escape(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[character]));
+  },
+
+  ensureProfiles() {
+    if (!Array.isArray(AppState.teamProfiles)) AppState.teamProfiles = [];
+    this.defaultNames.forEach(name => {
+      if (!AppState.teamProfiles.some(profile => profile.name === name)) {
+        AppState.teamProfiles.push({ name, skills: "", experience: "", capacityHours: 30, currentWorkloadHours: 0 });
+      }
+    });
+    AppState.teamProfiles.forEach(profile => {
+      if (typeof profile.skills !== "string") profile.skills = "";
+      if (!Number.isFinite(Number(profile.capacityHours))) profile.capacityHours = 30;
+      if (!Number.isFinite(Number(profile.currentWorkloadHours))) profile.currentWorkloadHours = 0;
+    });
+    StorageManager.saveState(AppState);
+  },
+
+  render() {
+    this.ensureProfiles();
+    const dateInput = document.getElementById("plannerDueDate");
+    if (dateInput) dateInput.min = this.today();
+    this.renderProfiles();
+    if (this.draft) this.renderReview();
+  },
+
+  renderProfiles() {
+    const container = document.getElementById("plannerProfiles");
+    if (!container) return;
+    container.innerHTML = AppState.teamProfiles.map((profile, index) => `
+      <div class="planner-profile-row">
+        <div class="planner-profile-top"><strong>${this.escape(profile.name || "Team member")}</strong><button class="btn btn-ghost btn-sm" aria-label="Remove ${this.escape(profile.name)}" onclick="PlannerController.removeProfile(${index})">Remove</button></div>
+        <label>Name<input class="form-input no-icon" value="${this.escape(profile.name)}" onchange="PlannerController.saveProfile(${index}, 'name', this.value)"></label>
+        <label>Skills and technical expertise<input class="form-input no-icon" value="${this.escape(profile.skills)}" placeholder="Enter confirmed skills, comma-separated" onchange="PlannerController.saveProfile(${index}, 'skills', this.value)"></label>
+        <div class="form-row">
+          <label>Experience level<input class="form-input no-icon" value="${this.escape(profile.experience)}" placeholder="Enter experience level" onchange="PlannerController.saveProfile(${index}, 'experience', this.value)"></label>
+          <label>Capacity (hours/week)<input class="form-input no-icon" type="number" min="1" max="80" value="${Number(profile.capacityHours) || 30}" onchange="PlannerController.saveProfile(${index}, 'capacityHours', this.value)"></label>
+        </div>
+        <label>Current workload (committed hours)<input class="form-input no-icon" type="number" min="0" max="500" value="${Number(profile.currentWorkloadHours) || 0}" onchange="PlannerController.saveProfile(${index}, 'currentWorkloadHours', this.value)"></label>
+      </div>`).join("");
+  },
+
+  saveProfile(index, field, value) {
+    const profile = AppState.teamProfiles[index];
+    if (!profile) return;
+    if (field === "capacityHours" || field === "currentWorkloadHours") {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed < (field === "capacityHours" ? 1 : 0)) {
+        Toast.warning("Enter a valid non-negative workload and a capacity above zero.");
+        this.renderProfiles();
+        return;
+      }
+      profile[field] = parsed;
+    } else {
+      profile[field] = String(value).trim();
+    }
+    StorageManager.saveState(AppState);
+    OverviewController.renderWorkload();
+    if (field === "skills") Toast.info("Profile skills saved. Regenerate the draft to recalculate matches.");
+  },
+
+  addProfile() {
+    AppState.teamProfiles.push({ name: "", skills: "", experience: "", capacityHours: 30, currentWorkloadHours: 0 });
+    StorageManager.saveState(AppState);
+    OverviewController.renderWorkload();
+    this.renderProfiles();
+    const inputs = document.querySelectorAll("#plannerProfiles .planner-profile-row input");
+    if (inputs.length) inputs[inputs.length - 5].focus();
+  },
+
+  removeProfile(index) {
+    if (AppState.teamProfiles.length <= 1) return Toast.warning("Keep at least one team profile.");
+    AppState.teamProfiles.splice(index, 1);
+    StorageManager.saveState(AppState);
+    OverviewController.renderWorkload();
+    this.renderProfiles();
+  },
+
+  today() {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  },
+
+  parseDate(value) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day, 12);
+  },
+
+  formatDate(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  },
+
+  addWorkdays(value, count) {
+    const date = this.parseDate(value);
+    let remaining = Math.max(0, count);
+    while (remaining > 0) {
+      date.setDate(date.getDate() + 1);
+      if (date.getDay() !== 0 && date.getDay() !== 6) remaining--;
+    }
+    while (date.getDay() === 0 || date.getDay() === 6) date.setDate(date.getDate() + 1);
+    return this.formatDate(date);
+  },
+
+  nextId(prefix, items) {
+    const max = items.reduce((highest, item) => {
+      const match = String(item.id || "").match(new RegExp(`^${prefix}-(\\d+)$`));
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+    return `${prefix}-${max + 1}`;
+  },
+
+  generate() {
+    const title = document.getElementById("plannerTitle").value.trim();
+    const description = document.getElementById("plannerDescription").value.trim();
+    const dueDate = document.getElementById("plannerDueDate").value;
+    if (!title || !description || !dueDate) return Toast.warning("Enter a title, detailed description, and desired completion date.");
+    if (dueDate < this.today()) return Toast.warning("Desired completion must be today or a future date.");
+    if (AppState.projects.some(project => project.title.toLowerCase() === title.toLowerCase())) return Toast.warning("A project with this title already exists. Choose a distinct title.");
+    this.ensureProfiles();
+    if (AppState.teamProfiles.some(profile => !profile.name.trim())) return Toast.warning("Every team profile needs a name before planning.");
+    const input = {
+      title, description, constraints: document.getElementById("plannerConstraints").value.trim(),
+      priority: document.getElementById("plannerPriority").value, dueDate
+    };
+    this.draft = { ...input, tasks: this.createPlan(input), createdAt: new Date().toISOString() };
+    this.renderReview();
+    document.getElementById("plannerReview").scrollIntoView({ behavior: "smooth", block: "start" });
+  },
+
+  // Templates intentionally produce deterministic, explainable work items.
+  createPlan(input) {
+    const text = `${input.title} ${input.description} ${input.constraints}`.toLowerCase();
+    const specs = [{
+      milestone: "Discovery & design", title: "Confirm scope and solution design",
+      description: `Translate the brief into a delivery design for ${input.title}.`,
+      acceptance: "Scope, key workflows, system boundaries, and delivery risks are reviewed and agreed.",
+      skills: ["requirements analysis", "solution design"], points: 3, depends: []
+    }];
+    const features = [
+      [/register|registration|sign.?up|authentication|auth|login|log.?in/, "Registration and secure authentication", "Users can register, sign in, and recover access with protected credentials.", ["authentication", "security", "backend"], 5],
+      [/account balance|balances|account/, "Account balances and account overview", "Users can view accurate account balances and account details.", ["backend", "database"], 5],
+      [/money transfer|transfer|payment/, "Money transfer workflow", "Authorized users can submit a validated transfer and see its outcome.", ["backend", "security"], 8],
+      [/transaction history|transaction|history/, "Transaction history", "Users can review searchable, correctly ordered transaction records.", ["backend", "database"], 5],
+      [/admin dashboard|admin|dashboard/, "Administrative dashboard", "Administrators can review operational data and perform authorized actions.", ["frontend", "backend"], 5],
+      [/api|service|integration/, "Core API and service integration", "Required service endpoints validate input and return documented responses.", ["backend", "api"], 5],
+      [/web|website|application|interface|user experience|ui/, "Primary user interface", "The primary user workflows render accessibly across supported screen sizes.", ["frontend", "accessibility"], 5],
+      [/database|data storage|persistence/, "Data model and persistence", "Application data is stored with validated relationships and required constraints.", ["database", "backend"], 5]
+    ];
+    const seen = new Set();
+    const featureIndexes = [];
+    features.forEach(([pattern, title, acceptance, skills, points]) => {
+      if (!pattern.test(text) || seen.has(title)) return;
+      seen.add(title);
+      featureIndexes.push(specs.length);
+      specs.push({ milestone: "Core delivery", title, description: `Implement ${title.toLowerCase()} for ${input.title}.`, acceptance, skills, points, depends: [0] });
+    });
+    if (!featureIndexes.length) {
+      featureIndexes.push(specs.length);
+      specs.push({ milestone: "Core delivery", title: "Implement the core project capability", description: `Build and integrate the primary capability described in: ${input.description}`, acceptance: "The primary user outcome is demonstrable, validated, and integrated with the project design.", skills: ["implementation", "testing"], points: 8, depends: [0] });
+    }
+    const verificationIndex = specs.length;
+    specs.push({ milestone: "Verification & delivery", title: "Integration, security, and acceptance testing", description: "Verify end-to-end behavior, access controls, error handling, and the agreed acceptance criteria.", acceptance: "Automated or documented checks cover critical workflows; high-impact defects are resolved or recorded.", skills: ["testing", "quality assurance", "security"], points: 5, depends: featureIndexes });
+    specs.push({ milestone: "Verification & delivery", title: "Release readiness and handover", description: "Prepare deployment, operational notes, and a delivery handover for the project team.", acceptance: "Release steps, rollback or recovery notes, and user-facing handover are reviewed.", skills: ["deployment", "documentation"], points: 3, depends: [verificationIndex] });
+
+    const existingHours = profile => Number(profile.currentWorkloadHours || 0) + AppState.tasks
+      .filter(task => task.assignee === profile.name && task.status !== "Done")
+      .reduce((sum, task) => sum + (Number(task.points) || 0) * 4, 0);
+    const plannedHours = new Map(AppState.teamProfiles.map(profile => [profile.name, existingHours(profile)]));
+    const tasks = specs.map((spec, index) => {
+      const matching = AppState.teamProfiles.map(profile => {
+        const skillText = profile.skills.toLowerCase();
+        const matched = spec.skills.filter(skill => skillText.includes(skill));
+        return { profile, matched, score: matched.length * 100 - (plannedHours.get(profile.name) / Math.max(1, Number(profile.capacityHours) * 2)) * 20 };
+      }).filter(candidate => candidate.matched.length).sort((a, b) => b.score - a.score);
+      const selected = matching[0] || null;
+      const owner = selected ? selected.profile.name : "";
+      const points = spec.points;
+      if (selected) plannedHours.set(owner, plannedHours.get(owner) + points * 4);
+      return {
+        id: `PLAN-${index + 1}`, milestone: spec.milestone, title: spec.title,
+        description: spec.description, acceptanceCriteria: spec.acceptance,
+        subtasks: ["Implement the scoped behavior", "Validate against acceptance criteria"],
+        requiredSkills: spec.skills, assignee: owner, collaborators: [],
+        assignmentReason: selected
+          ? `${selected.matched.join(", ")} match declared skills; assignment balances current commitments against capacity.`
+          : "No declared profile skill matches this task yet. Confirm team skills or choose an owner manually.",
+        priority: input.priority, points, dependsOn: spec.depends.map(dep => `PLAN-${dep + 1}`),
+        startDate: "", dueDate: ""
+      };
+    });
+    this.schedule(tasks);
+    return tasks;
+  },
+
+  // Schedule on weekdays after dependency completion and each owner's committed load.
+  schedule(tasks) {
+    const availability = new Map();
+    tasks.forEach(task => {
+      const profile = AppState.teamProfiles.find(member => member.name === task.assignee);
+      const weekly = profile ? Number(profile.capacityHours) : Math.max(1, ...AppState.teamProfiles.map(member => Number(member.capacityHours) || 0));
+      const committed = profile
+        ? Number(profile.currentWorkloadHours || 0) + AppState.tasks.filter(existing => existing.assignee === profile.name && existing.status !== "Done").reduce((sum, existing) => sum + (Number(existing.points) || 0) * 4, 0)
+        : 0;
+      let earliest = availability.get(task.assignee || "__unassigned") || this.today();
+      task.dependsOn.forEach(id => {
+        const dependency = tasks.find(candidate => candidate.id === id);
+        if (dependency?.dueDate) earliest = dependency.dueDate >= earliest ? this.addWorkdays(dependency.dueDate, 1) : earliest;
+      });
+      if (committed > 0 && !availability.has(task.assignee || "__unassigned")) earliest = this.addWorkdays(earliest, Math.ceil(committed / Math.max(1, weekly / 5)));
+      const duration = Math.max(1, Math.ceil((task.points * 4) / Math.max(1, weekly / 5)));
+      task.startDate = earliest;
+      task.dueDate = this.addWorkdays(earliest, duration - 1);
+      availability.set(task.assignee || "__unassigned", this.addWorkdays(task.dueDate, 1));
+    });
+  },
+
+  updateTask(index, field, value) {
+    const task = this.draft?.tasks[index];
+    if (!task) return;
+    if (field === "points") {
+      const points = Number(value);
+      if (!Number.isFinite(points) || points < 1 || points > 40) return Toast.warning("Estimate must be between 1 and 40 story points.");
+      task.points = points;
+    } else if (field === "dependsOn") {
+      task.dependsOn = value.split(",").map(item => item.trim()).filter(Boolean);
+    } else if (field === "requiredSkills") {
+      task.requiredSkills = value.split(",").map(item => item.trim()).filter(Boolean);
+    } else if (field === "collaborators") {
+      task.collaborators = value ? [value] : [];
+    } else {
+      task[field] = value;
+    }
+    this.renderReview();
+  },
+
+  addTask() {
+    const maxId = this.draft.tasks.reduce((max, task) => Math.max(max, Number(task.id.replace("PLAN-", "")) || 0), 0);
+    const id = `PLAN-${maxId + 1}`;
+    this.draft.tasks.push({ id, milestone: "Additional work", title: "New planning task", description: "", acceptanceCriteria: "", subtasks: [], requiredSkills: [], assignee: "", collaborators: [], assignmentReason: "Manually added during review.", priority: this.draft.priority, points: 3, dependsOn: [], startDate: this.today(), dueDate: this.draft.dueDate });
+    this.renderReview();
+  },
+
+  removeTask(index) {
+    this.draft.tasks.splice(index, 1);
+    this.renderReview();
+  },
+
+  findings() {
+    const problems = [];
+    const ids = new Set(this.draft.tasks.map(task => task.id));
+    const titles = new Set();
+    this.draft.tasks.forEach(task => {
+      if (!task.title.trim()) problems.push(`${task.id}: title is required.`);
+      if (!task.assignee) problems.push(`${task.id}: choose an owner before approval.`);
+      if (task.dueDate > this.draft.dueDate) problems.push(`${task.id}: scheduled due date exceeds the desired completion date.`);
+      if (task.startDate > task.dueDate) problems.push(`${task.id}: start date is after its due date.`);
+      if (task.dependsOn.some(id => !ids.has(id) || id === task.id)) problems.push(`${task.id}: dependency is missing or self-referential.`);
+      task.dependsOn.forEach(id => {
+        const dependency = this.draft.tasks.find(item => item.id === id);
+        if (dependency && dependency.dueDate >= task.startDate) problems.push(`${task.id}: start date must follow dependency ${id}.`);
+      });
+      const normalized = task.title.trim().toLowerCase();
+      if (titles.has(normalized)) problems.push(`Duplicate task title: ${task.title}.`);
+      titles.add(normalized);
+    });
+    const visiting = new Set();
+    const visited = new Set();
+    const visit = id => {
+      if (visiting.has(id)) return true;
+      if (visited.has(id)) return false;
+      visiting.add(id);
+      const task = this.draft.tasks.find(item => item.id === id);
+      const hasCycle = task ? task.dependsOn.some(dependency => ids.has(dependency) && visit(dependency)) : false;
+      visiting.delete(id);
+      visited.add(id);
+      return hasCycle;
+    };
+    if (this.draft.tasks.some(task => visit(task.id))) problems.push("Dependencies contain a cycle.");
+    this.draft.tasks.forEach((task, index) => {
+      if (!task.assignee) return;
+      const collides = this.draft.tasks.slice(index + 1).some(other => other.assignee === task.assignee && task.startDate <= other.dueDate && other.startDate <= task.dueDate);
+      if (collides) problems.push(`${task.assignee} has overlapping task dates; reassign work or change dates.`);
+    });
+    return [...new Set(problems)];
+  },
+
+  renderReview() {
+    const container = document.getElementById("plannerReview");
+    if (!container || !this.draft) return;
+    const profiles = AppState.teamProfiles;
+    const profileOptions = (selected, allowEmpty = true) => `${allowEmpty ? '<option value="">Unassigned</option>' : ""}${profiles.map(profile => `<option value="${this.escape(profile.name)}" ${profile.name === selected ? "selected" : ""}>${this.escape(profile.name)}</option>`).join("")}`;
+    const distribution = profiles.map(profile => {
+      const assigned = this.draft.tasks.filter(task => task.assignee === profile.name);
+      const points = assigned.reduce((sum, task) => sum + Number(task.points || 0), 0);
+      const workload = Number(profile.currentWorkloadHours || 0) + points * 4;
+      return `<div class="planner-load-row"><span>${this.escape(profile.name)}</span><span>${assigned.length} tasks · ${points} pts</span><span>${workload}h committed / ${Number(profile.capacityHours)}h weekly capacity</span></div>`;
+    }).join("");
+    const problems = this.findings();
+    const tasks = this.draft.tasks.map((task, index) => `
+      <article class="planner-task">
+        <div class="planner-task-heading"><span class="badge badge-secondary">${this.escape(task.id)} · ${this.escape(task.milestone)}</span><button class="btn btn-ghost btn-sm" onclick="PlannerController.removeTask(${index})">Remove</button></div>
+        <label>Task title<input class="form-input no-icon" value="${this.escape(task.title)}" onchange="PlannerController.updateTask(${index}, 'title', this.value)"></label>
+        <label>Description<textarea class="form-input no-icon" rows="2" onchange="PlannerController.updateTask(${index}, 'description', this.value)">${this.escape(task.description)}</textarea></label>
+        <label>Acceptance criteria<textarea class="form-input no-icon" rows="2" onchange="PlannerController.updateTask(${index}, 'acceptanceCriteria', this.value)">${this.escape(task.acceptanceCriteria)}</textarea></label>
+        <div class="planner-review-fields">
+          <label>Owner<select class="form-input no-icon" onchange="PlannerController.updateTask(${index}, 'assignee', this.value)">${profileOptions(task.assignee)}</select></label>
+          <label>Collaborator<select class="form-input no-icon" onchange="PlannerController.updateTask(${index}, 'collaborators', this.value)">${profileOptions(task.collaborators[0] || "")}</select></label>
+          <label>Priority<select class="form-input no-icon" onchange="PlannerController.updateTask(${index}, 'priority', this.value)">${["Low", "Medium", "High", "Critical"].map(value => `<option ${value === task.priority ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+          <label>Estimate (points)<input class="form-input no-icon" type="number" min="1" max="40" value="${task.points}" onchange="PlannerController.updateTask(${index}, 'points', this.value)"></label>
+          <label>Start date<input class="form-input no-icon" type="date" value="${this.escape(task.startDate)}" onchange="PlannerController.updateTask(${index}, 'startDate', this.value)"></label>
+          <label>Due date<input class="form-input no-icon" type="date" value="${this.escape(task.dueDate)}" onchange="PlannerController.updateTask(${index}, 'dueDate', this.value)"></label>
+        </div>
+        <label>Required skills (comma-separated)<input class="form-input no-icon" value="${this.escape(task.requiredSkills.join(", "))}" onchange="PlannerController.updateTask(${index}, 'requiredSkills', this.value)"></label>
+        <label>Dependencies (plan IDs, comma-separated)<input class="form-input no-icon" value="${this.escape(task.dependsOn.join(", "))}" onchange="PlannerController.updateTask(${index}, 'dependsOn', this.value)"></label>
+        <p class="planner-assignment-reason">${this.escape(task.assignmentReason)}</p>
+        ${task.subtasks?.length ? `<div class="planner-subtasks"><strong>Subtasks</strong><ul>${task.subtasks.map(subtask => `<li>${this.escape(subtask)}</li>`).join("")}</ul></div>` : ""}
+      </article>`).join("");
+    container.innerHTML = `
+      <div class="planner-review-heading"><div><h3>Review proposed plan</h3><p>${this.escape(this.draft.title)} · completion target ${this.escape(this.draft.dueDate)} · ${this.draft.tasks.length} tasks</p></div><div class="planner-review-actions"><button class="btn btn-secondary btn-sm" onclick="PlannerController.generate()">Regenerate</button><button class="btn btn-primary btn-sm" onclick="PlannerController.approve()">Approve plan</button></div></div>
+      <div class="planner-review-meta"><strong>Milestones:</strong> ${[...new Set(this.draft.tasks.map(task => task.milestone))].map(this.escape).join(" · ") || "None"}</div>
+      ${problems.length ? `<div class="planner-conflicts"><strong>Resolve before approval</strong><ul>${problems.map(problem => `<li>${this.escape(problem)}</li>`).join("")}</ul></div>` : `<div class="planner-ready">No schedule or dependency conflicts detected.</div>`}
+      <section class="planner-load"><h4>Workload distribution</h4>${distribution}</section>
+      <div class="planner-task-list">${tasks || '<p class="planner-empty">No tasks in this draft. Add a task to continue.</p>'}</div>
+      <button class="btn btn-secondary btn-sm" onclick="PlannerController.addTask()">Add task</button>`;
+  },
+
+  approve() {
+    if (!this.draft?.tasks.length) return Toast.warning("Add at least one task before approval.");
+    const problems = this.findings();
+    if (problems.length) return Toast.warning(`Resolve ${problems.length} review issue${problems.length === 1 ? "" : "s"} before approval.`);
+    const projectId = this.nextId("PRJ", AppState.projects);
+    const sprintId = this.nextId("SPR", AppState.sprints);
+    const taskIds = AppState.tasks.map(task => Number(String(task.id).match(/-(\d+)$/)?.[1]) || 0);
+    let nextTaskNumber = Math.max(100, ...taskIds) + 1;
+    const savedTaskIds = new Map(this.draft.tasks.map((task, index) => [task.id, `TSK-${nextTaskNumber + index}`]));
+    const sprintName = `${sprintId} - ${this.draft.title}`;
+    const points = this.draft.tasks.reduce((sum, task) => sum + Number(task.points), 0);
+    const members = [...new Set(this.draft.tasks.flatMap(task => [task.assignee, ...task.collaborators]).filter(Boolean))];
+    const project = {
+      id: projectId, title: this.draft.title, name: this.draft.title,
+      desc: this.draft.description, description: this.draft.description,
+      category: "AI Planned", status: "Planning", progress: 0, pointsDone: 0, plannerGenerated: true,
+      pointsTotal: points, activeSprint: sprintName,
+      members: members.map(name => name.split(/\s+/).map(part => part[0]).join("").slice(0, 2)),
+      repo: "", priority: this.draft.priority, desiredCompletionDate: this.draft.dueDate,
+      constraints: this.draft.constraints
+    };
+    const sprint = {
+      id: sprintId, name: sprintName, goal: this.draft.description,
+      startDate: this.draft.tasks.map(task => task.startDate).sort()[0],
+      endDate: this.draft.dueDate, status: "Upcoming", totalPoints: points,
+      burnedPoints: 0, velocityTrend: `Planned ${points} pts`, riskLevel: "Planned"
+    };
+    const createdTasks = this.draft.tasks.map(task => {
+      const taskId = `TSK-${nextTaskNumber++}`;
+      return {
+        id: taskId, title: task.title.trim(),
+        desc: `${task.description.trim()}\n\nAcceptance criteria: ${task.acceptanceCriteria.trim()}${this.draft.constraints ? `\n\nConstraints: ${this.draft.constraints}` : ""}`,
+        project: project.title, sprint: sprintName, status: "To Do", priority: task.priority,
+        assignee: task.assignee, collaborators: task.collaborators, points: Number(task.points),
+        estimateHours: Number(task.points) * 4, dueDate: task.dueDate,
+        startDate: task.startDate, milestone: task.milestone, requiredSkills: task.requiredSkills,
+        acceptanceCriteria: task.acceptanceCriteria, subtasks: task.subtasks || [],
+        dependencies: task.dependsOn.map(id => savedTaskIds.get(id)).filter(Boolean), updatedAt: "Just now"
+      };
+    });
+    AppState.projects.unshift(project);
+    AppState.sprints.unshift(sprint);
+    AppState.tasks.unshift(...createdTasks);
+    const now = new Date().toLocaleString();
+    members.forEach(member => {
+      const owned = createdTasks.filter(task => task.assignee === member || task.collaborators.includes(member));
+      AppState.notifications.unshift({
+        id: `planner-${Date.now()}-${member.replace(/\W/g, "")}`, title: `Project assignments: ${project.title}`,
+        desc: `${owned.length} task${owned.length === 1 ? "" : "s"} assigned or shared with you. Next due: ${owned.map(task => task.dueDate).sort()[0] || this.draft.dueDate}.`,
+        time: now, type: "task", unread: true
+      });
+    });
+    StorageManager.saveState(AppState);
+    this.draft = null;
+    document.getElementById("plannerReview").innerHTML = `<div class="planner-approved"><strong>Plan approved and added to the workspace.</strong><span>${this.escape(project.title)} · ${createdTasks.length} tasks · ${this.escape(sprintName)}</span><button class="btn btn-primary btn-sm" onclick="Router.navigate('tasks')">Open Kanban Board</button></div>`;
+    ProjectsController.render();
+    TasksController.render();
+    OverviewController.render();
+    SprintsController.render();
+    Notifications.render();
+    Toast.success(`Approved ${createdTasks.length} tasks for ${project.title}. In-app assignments are visible in notifications.`);
+  }
+};

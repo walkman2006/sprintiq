@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SprintIQ — AI-Powered Agile Project Management</title>
-  <meta name="description" content="SprintIQ is a premium dark-mode agile project management system with predictive AI insights, sprint tracking, and real-time kanban workflow.">
+  <title>SprintIQ — Agile Project Management</title>
+  <meta name="description" content="SprintIQ is an agile project management workspace with local rules-based planning, sprint tracking, and Kanban workflow.">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -175,6 +175,16 @@
           <span class="nav-counter" id="navTaskCount">12</span>
         </a>
 
+        <a class="nav-item" data-view="ai-planner" onclick="Router.navigate('ai-planner')">
+          <div class="nav-item-left">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3v3M12 18v3M4.93 4.93l2.12 2.12m9.9 9.9 2.12 2.12M3 12h3m12 0h3M4.93 19.07l2.12-2.12m9.9-9.9 2.12-2.12"></path>
+              <circle cx="12" cy="12" r="4"></circle>
+            </svg>
+            <span>AI Project Planner</span>
+          </div>
+        </a>
+
         <span class="nav-section-label" style="margin-top: 10px;">Intelligence</span>
 
         <a class="nav-item" data-view="ai-insights" onclick="Router.navigate('ai-insights')">
@@ -184,7 +194,7 @@
             </svg>
             <span>AI Insights</span>
           </div>
-          <span class="ai-indicator" title="Active AI Engine"></span>
+          <span class="ai-indicator" title="Local rules-based insights"></span>
         </a>
 
         <a class="nav-item" data-view="settings" onclick="Router.navigate('settings')">
@@ -252,9 +262,9 @@
         </div>
 
         <!-- AI Engine Status Pill -->
-        <div class="system-status-pill" title="AI Predictive Model: Online & Calibrated">
+        <div class="system-status-pill" title="Local rules engine available; no AI service connected">
           <span class="status-dot-pulse" aria-hidden="true"></span>
-          <span>Neural Engine v2.4</span>
+          <span>Local Rules Engine</span>
         </div>
 
         <!-- Notifications Dropdown -->
@@ -296,231 +306,62 @@
            VIEW 1: OVERVIEW DASHBOARD
            ==================================================================== -->
       <section id="view-overview" class="view-container active">
-        <div class="overview-grid">
-
-          <!-- AI Intelligence Highlight Banner -->
-          <div class="ai-summary-banner">
-            <div class="ai-summary-left">
-              <div class="ai-avatar-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                </svg>
-              </div>
-              <div class="ai-summary-text">
-                <h3>
-                  Sprint 1 — CI/CD Pipeline Implementation Health: 94% On Schedule
-                  <span class="badge badge-success">Low Risk</span>
-                </h3>
-                <p>Velocity is trending +6% above 4-week moving average. 1 potential review bottleneck identified in Auth Service.</p>
-              </div>
-            </div>
-            <div class="ai-summary-actions">
-              <button class="btn btn-secondary btn-sm" onclick="Router.navigate('ai-insights')">
-                View Recommendations
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </button>
-            </div>
+        <div class="overview-command">
+          <div class="overview-heading">
+            <div><span class="overview-eyebrow">WORKSPACE</span><h1>Agile Command Center</h1><p>Live delivery status from your projects, sprints, and assignments.</p></div>
           </div>
 
-          <!-- Key Metrics Statistics Grid -->
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-top">
-                <span class="stat-label">Active Sprints</span>
-                <div class="stat-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                </div>
-              </div>
-              <div class="stat-value-group">
-                <span class="stat-value" id="statActiveSprint">Sprint 1 — CI/CD Pipeline Implementation</span>
-              </div>
-              <div class="stat-footer-text">Day 7 of 14 • Ends in 3 days</div>
-            </div>
-
-            <div class="stat-card">
-              <div class="stat-top">
-                <span class="stat-label">Sprint Velocity</span>
-                <div class="stat-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                    <polyline points="17 6 23 6 23 12"></polyline>
-                  </svg>
-                </div>
-              </div>
-              <div class="stat-value-group">
-                <span class="stat-value" id="statVelocityPts">48 pts</span>
-                <span class="stat-trend positive">↑ 12%</span>
-              </div>
-              <div class="stat-footer-text">Target: 52 pts across 12 tasks</div>
-            </div>
-
-            <div class="stat-card">
-              <div class="stat-top">
-                <span class="stat-label">Total Issues</span>
-                <div class="stat-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                  </svg>
-                </div>
-              </div>
-              <div class="stat-value-group">
-                <span class="stat-value" id="statTotalIssues">12</span>
-                <span class="badge badge-primary">6 In Prog</span>
-              </div>
-              <div class="stat-footer-text">3 Done • 3 Backlog/Todo</div>
-            </div>
-
-            <div class="stat-card">
-              <div class="stat-top">
-                <span class="stat-label">AI Health Index</span>
-                <div class="stat-icon" style="color: var(--accent-secondary);">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                  </svg>
-                </div>
-              </div>
-              <div class="stat-value-group">
-                <span class="stat-value">94 / 100</span>
-                <span class="stat-trend positive">Optimal</span>
-              </div>
-              <div class="stat-footer-text">Zero blocker scope changes</div>
-            </div>
+          <div class="command-summary-grid">
+            <article class="command-stat"><div class="command-stat-label">Total Tasks</div><div class="command-stat-value" id="overviewTotalTasks">0</div></article>
+            <article class="command-stat"><div class="command-stat-label">Completed</div><div class="command-stat-value" id="overviewCompletedTasks">0</div></article>
+            <article class="command-stat"><div class="command-stat-label">In Progress</div><div class="command-stat-value" id="overviewInProgressTasks">0</div></article>
+            <article class="command-stat"><div class="command-stat-label">To Do</div><div class="command-stat-value" id="overviewTodoTasks">0</div></article>
+            <article class="command-stat command-stat-alert" id="overviewOverdueCard" hidden><div class="command-stat-label">Overdue</div><div class="command-stat-value" id="overviewOverdueCount">0</div></article>
+            <article class="command-stat"><div class="command-stat-label">Team Members</div><div class="command-stat-value" id="overviewTeamCount">0</div></article>
           </div>
 
-          <!-- Middle Section: Velocity Chart & Sprint Progress -->
-          <div class="dashboard-middle-grid">
-            <!-- Productivity & Velocity Canvas Chart -->
-            <div class="card chart-card">
-              <div class="card-header">
-                <div>
-                  <h3 class="card-title">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="18" y1="20" x2="18" y2="10"></line>
-                      <line x1="12" y1="20" x2="12" y2="4"></line>
-                      <line x1="6" y1="20" x2="6" y2="14"></line>
-                    </svg>
-                    Team Velocity & Burndown
-                  </h3>
-                  <span class="card-subtitle">Burned story points vs ideal trajectory across sprints</span>
-                </div>
-                <div class="chart-header-actions">
-                  <div class="filter-pills">
-                    <span class="filter-pill active" id="chartTabBurndown" onclick="OverviewController.setChartMode('burndown')">Burndown</span>
-                    <span class="filter-pill" id="chartTabVelocity" onclick="OverviewController.setChartMode('velocity')">Velocity</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Interactive Canvas Chart -->
-              <div class="chart-canvas-container">
-                <canvas id="productivityCanvas"></canvas>
-              </div>
-
-              <div class="chart-legend">
-                <div class="legend-item">
-                  <span class="legend-dot" style="background: var(--accent-primary);"></span>
-                  <span id="legendLabelPrimary">Actual Completed (pts)</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-dot" style="background: var(--text-muted); opacity: 0.7;"></span>
-                  <span id="legendLabelSecondary">Ideal Guideline</span>
-                </div>
-              </div>
+          <section class="project-flow-panel" aria-labelledby="projectFlowHeading">
+            <div class="project-flow-heading"><div><h2 id="projectFlowHeading">Project Flow</h2><p>From idea to delivery — one step at a time.</p></div><span class="project-flow-note">Illustrative lifecycle</span></div>
+            <div class="project-flow-track">
+              <svg class="project-flow-arrows" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
+                <defs><marker id="flowArrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="currentColor" stroke-width="1.5"></path></marker></defs>
+                <path class="flow-route" d="M90 64 C145 64 155 34 210 34 S275 64 330 64 S395 34 450 34 S515 64 570 64 S635 34 690 34 S755 64 810 64 S875 34 930 34" marker-end="url(#flowArrow)"></path>
+                <path class="flow-route flow-route-motion" d="M90 64 C145 64 155 34 210 34 S275 64 330 64 S395 34 450 34 S515 64 570 64 S635 34 690 34 S755 64 810 64 S875 34 930 34"></path>
+                <circle class="flow-dot" r="4"><animateMotion dur="18s" repeatCount="indefinite" path="M90 64 C145 64 155 34 210 34 S275 64 330 64 S395 34 450 34 S515 64 570 64 S635 34 690 34 S755 64 810 64 S875 34 930 34"></animateMotion></circle>
+              </svg>
+              <ol class="project-flow-stages" aria-label="Illustrative project lifecycle, not task dependencies">
+                <li><span class="flow-stage-index">01</span><strong>Plan</strong></li>
+                <li><span class="flow-stage-index">02</span><strong>Build</strong></li>
+                <li><span class="flow-stage-index">03</span><strong>Test</strong></li>
+                <li><span class="flow-stage-index">04</span><strong>Deploy</strong></li>
+                <li><span class="flow-stage-index">05</span><strong>Complete</strong></li>
+              </ol>
             </div>
+          </section>
 
-            <!-- Active Sprint Progress Widget -->
-            <div class="card active-sprint-card">
-              <div>
-                <div class="card-header" style="margin-bottom: 8px;">
-                  <h3 class="card-title">Sprint 1 — CI/CD Pipeline Implementation Status</h3>
-                  <span class="badge badge-success">In Progress</span>
-                </div>
-                <p class="sprint-goal-text">Goal: Ship Kubernetes production rollout and refresh token OAuth2 security layer.</p>
-
-                <div class="sprint-meta-row">
-                  <span>Sprint Completion</span>
-                  <span class="sprint-progress-stat" id="overviewSprintPct">72%</span>
-                </div>
-                <div class="progress-container">
-                  <div class="progress-bar" id="overviewSprintProgressBar" style="width: 72%;"></div>
-                </div>
-
-                <div class="sprint-meta-row" style="margin-top: 14px;">
-                  <span>Points Burned</span>
-                  <strong style="color: var(--text-primary);" id="overviewPointsBurned">38 / 52 pts</strong>
-                </div>
+          <div class="overview-bottom-grid">
+            <section class="card command-panel sprint-command-panel">
+              <div class="command-panel-heading"><div><h2>Current Sprint Progress</h2><p>Completion is based on actual task statuses.</p></div><button class="btn btn-ghost btn-sm" onclick="Router.navigate('sprints')">All sprints</button></div>
+              <div id="overviewSprintPanel"></div>
+            </section>
+            <section class="card command-panel team-command-panel">
+              <div class="command-panel-heading"><div><h2>Team Workload</h2><p>Assigned task counts from saved assignments.</p></div></div>
+              <div id="overviewTeamList" class="command-team-list"></div>
+            </section>
+            <section class="card command-panel quick-actions-panel">
+              <div class="command-panel-heading"><div><h2>Quick Actions</h2><p>Jump into the next planning or delivery step.</p></div></div>
+              <div class="overview-quick-actions">
+                <button class="btn btn-secondary btn-sm" onclick="ProjectModal.open()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>Create Project</button>
+                <button class="btn btn-secondary btn-sm" onclick="Router.navigate('ai-planner')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"></path><circle cx="12" cy="12" r="4"></circle></svg>AI Project Planner</button>
+                <button class="btn btn-secondary btn-sm" onclick="Router.navigate('tasks')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>Kanban Board</button>
+                <button class="btn btn-secondary btn-sm" onclick="Router.navigate('ai-insights')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"></path></svg>AI Insights</button>
               </div>
-
-              <div class="sprint-burndown-stats">
-                <div class="burndown-box">
-                  <div class="num" id="overviewCountTodo">3</div>
-                  <div class="lbl">To Do</div>
-                </div>
-                <div class="burndown-box">
-                  <div class="num" id="overviewCountInProgress" style="color: var(--accent-primary);">6</div>
-                  <div class="lbl">In Progress</div>
-                </div>
-                <div class="burndown-box">
-                  <div class="num" id="overviewCountDone" style="color: var(--success);">3</div>
-                  <div class="lbl">Completed</div>
-                </div>
-              </div>
-            </div>
+            </section>
+            <section class="card command-panel attention-command-panel">
+              <div class="command-panel-heading"><div><h2>Needs attention</h2><p>Signals derived from task owners, dates, and status.</p></div></div>
+              <div id="overviewAttentionList"></div>
+            </section>
           </div>
-
-          <!-- Bottom Section: Recent Tasks & Workload -->
-          <div class="dashboard-bottom-grid">
-            <!-- Recent Tasks List -->
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h3 class="card-title">Recent Sprint Tasks</h3>
-                  <span class="card-subtitle">Active items moving across team board</span>
-                </div>
-                <button class="btn btn-secondary btn-sm" onclick="Router.navigate('tasks')">View All Tasks</button>
-              </div>
-
-              <div class="table-responsive">
-                <table class="custom-table" id="overviewRecentTasksTable">
-                  <thead>
-                    <tr>
-                      <th>Task</th>
-                      <th>Priority</th>
-                      <th>Assignee</th>
-                      <th>Status</th>
-                      <th>Points</th>
-                    </tr>
-                  </thead>
-                  <tbody id="overviewTasksTbody">
-                    <!-- Injected by OverviewController -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Team Workload Distribution -->
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h3 class="card-title">Team Workload</h3>
-                  <span class="card-subtitle">Story points distribution per engineer</span>
-                </div>
-              </div>
-
-              <div class="workload-list" id="overviewWorkloadList">
-                <!-- Rendered dynamically -->
-              </div>
-            </div>
-
-          </div>
-
         </div>
       </section>
 
@@ -656,6 +497,7 @@
             <select id="taskPriorityFilter" class="select-filter" onchange="TasksController.handleFilterChange()">
               <option value="all">All Priorities</option>
               <option value="Urgent">Urgent</option>
+              <option value="Critical">Critical</option>
               <option value="High">High</option>
               <option value="Medium">Medium</option>
               <option value="Low">Low</option>
@@ -664,11 +506,6 @@
             <!-- Assignee Filter -->
             <select id="taskAssigneeFilter" class="select-filter" onchange="TasksController.handleFilterChange()">
               <option value="all">All Assignees</option>
-              <option value="Alex Rivera">Alex Rivera</option>
-              <option value="Sarah Chen">Sarah Chen</option>
-              <option value="Marcus Vance">Marcus Vance</option>
-              <option value="Elena Rostova">Elena Rostova</option>
-              <option value="David Kim">David Kim</option>
             </select>
 
             <!-- Status Filter -->
@@ -776,6 +613,39 @@
         </div>
       </section>
 
+      <section id="view-ai-planner" class="view-container">
+        <div class="view-header">
+          <div class="view-header-title">
+            <h2>AI Project Planner</h2>
+            <p>Build a capacity-aware project proposal, then review it before anything is added to your workspace.</p>
+          </div>
+          <span class="badge badge-warning">Local rules prototype</span>
+        </div>
+
+        <div class="planner-notice">Plans are generated by structured JavaScript rules. No external AI service is connected.</div>
+
+        <div class="planner-layout">
+          <section class="card planner-section">
+            <div class="planner-section-heading"><div><h3>Project brief</h3><p>Describe the outcome and delivery constraints.</p></div></div>
+            <div class="form-group"><label for="plannerTitle">Project title</label><input id="plannerTitle" class="form-input no-icon" type="text" placeholder="e.g. Banking System Web Application" maxlength="120"></div>
+            <div class="form-group"><label for="plannerDescription">Detailed description</label><textarea id="plannerDescription" class="form-input no-icon planner-textarea" rows="5" placeholder="Describe the users, capabilities, and intended outcome..."></textarea></div>
+            <div class="form-row">
+              <div class="form-group"><label for="plannerPriority">Priority</label><select id="plannerPriority" class="form-input no-icon"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></div>
+              <div class="form-group"><label for="plannerDueDate">Desired completion</label><input id="plannerDueDate" class="form-input no-icon" type="date"></div>
+            </div>
+            <div class="form-group"><label for="plannerConstraints">Constraints or requirements <span class="planner-optional">Optional</span></label><textarea id="plannerConstraints" class="form-input no-icon planner-textarea" rows="3" placeholder="Compliance, platform, scope, or delivery constraints..."></textarea></div>
+          </section>
+
+          <section class="card planner-section">
+            <div class="planner-section-heading"><div><h3>Team profiles</h3><p>Skills are intentionally blank until confirmed by your team lead.</p></div><button class="btn btn-secondary btn-sm" onclick="PlannerController.addProfile()">Add member</button></div>
+            <div id="plannerProfiles" class="planner-profiles"></div>
+          </section>
+        </div>
+
+        <div class="planner-generate-row"><button class="btn btn-primary" onclick="PlannerController.generate()">Generate Project Plan</button><span>Nothing is created in Projects, Sprints, or Kanban until approval.</span></div>
+        <section id="plannerReview" class="planner-review" aria-live="polite"></section>
+      </section>
+
       <!-- ====================================================================
            VIEW 5: AI INSIGHTS PAGE
            ==================================================================== -->
@@ -788,13 +658,13 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
                 </svg>
-                SprintIQ Neural Engine
+                SprintIQ Rules Engine
               </h2>
-              <p>Continuous predictive workload balancing, pull-request bottleneck mitigation, and sprint velocity forecasting using team telemetry.</p>
+              <p>Local, structured analysis of sprint data, task flow, and declared team workload.</p>
             </div>
             <div class="ai-status-tag">
               <span class="status-dot-pulse" style="background: var(--accent-secondary);" aria-hidden="true"></span>
-              <span>Model Confidence: 96.2%</span>
+              <span>Rules-based · no AI model connected</span>
             </div>
           </div>
 
@@ -873,7 +743,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
               </svg>
-              <span>AI Engine</span>
+              <span>Rules Engine</span>
             </div>
             <div class="settings-nav-item" onclick="SettingsController.setTab('appearance', this)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -939,8 +809,8 @@
             <!-- Tab: AI -->
             <div id="tab-ai" class="settings-tab-pane" style="display: none;">
               <div class="settings-section-header">
-                <h3>Neural Engine Telemetry</h3>
-                <p>Control algorithmic recommendations and bottleneck thresholds</p>
+                <h3>Planning Heuristics</h3>
+                <p>Configure local recommendation and workload thresholds</p>
               </div>
 
               <div class="settings-row">
@@ -1100,6 +970,7 @@
               <label class="form-label" for="taskFormPriority">Priority</label>
               <select id="taskFormPriority" class="select-filter" style="width: 100%;">
                 <option value="Urgent">Urgent</option>
+                <option value="Critical">Critical</option>
                 <option value="High" selected>High</option>
                 <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
